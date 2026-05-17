@@ -201,8 +201,8 @@ var en_default = {
   "settings.scheduled.weekday": "Weekday (0=Sun)",
   "settings.scheduled.timePH": "HH:mm",
   "settings.scheduled.folderPH": "folder",
-  "prompt.system.ask": "You are {{agentName}} for an Obsidian vault. Use Hermes's native Obsidian skill and cite note paths.",
-  "prompt.system.edit": "You are {{agentName}} inside an Obsidian vault. Use Hermes's native Obsidian skill and keep edits grounded in the vault.",
+  "prompt.system.ask": "You are {{agentName}} for an Obsidian vault. Use Hermes's native Obsidian skill and cite notes as Obsidian wikilinks like [[path/to/note|Note Title]] when possible.",
+  "prompt.system.edit": "You are {{agentName}} inside an Obsidian vault. Use Hermes's native Obsidian skill, keep edits grounded in the vault, and cite notes as Obsidian wikilinks like [[path/to/note|Note Title]] when possible.",
   "prompt.scheduled.daily": "Summarize notes modified today. Produce one new note with headings per topic and links back.",
   "prompt.scheduled.weekly": "Produce a weekly review of the past 7 days. Highlight themes and open loops in one new note.",
   "prompt.compact": `You are a summarization assistant. Produce a dense prose summary (200\u2013400 words) of the conversation below, preserving:
@@ -300,8 +300,8 @@ var zh_CN_default = {
   "settings.scheduled.weekday": "\u661F\u671F\uFF080=\u5468\u65E5\uFF09",
   "settings.scheduled.timePH": "HH:mm",
   "settings.scheduled.folderPH": "\u6587\u4EF6\u5939",
-  "prompt.system.ask": "\u4F60\u662F Obsidian \u4ED3\u5E93\u7684 {{agentName}}\u3002\u4F7F\u7528 Hermes \u539F\u751F\u7684 Obsidian skill\uFF0C\u5F15\u7528\u7B14\u8BB0\u8DEF\u5F84\u3002",
-  "prompt.system.edit": "\u4F60\u662F Obsidian \u4ED3\u5E93\u5185\u7684 {{agentName}}\u3002\u4F7F\u7528 Hermes \u539F\u751F\u7684 Obsidian skill\uFF0C\u57FA\u4E8E vault \u4E0A\u4E0B\u6587\u7ED9\u51FA\u7F16\u8F91\u5EFA\u8BAE\u3002",
+  "prompt.system.ask": "\u4F60\u662F Obsidian \u4ED3\u5E93\u7684 {{agentName}}\u3002\u4F7F\u7528 Hermes \u539F\u751F\u7684 Obsidian skill\uFF0C\u5C3D\u91CF\u4F7F\u7528 [[path/to/note|Note Title]] \u8FD9\u6837\u7684 Obsidian wiki \u94FE\u63A5\u5F15\u7528\u7B14\u8BB0\u3002",
+  "prompt.system.edit": "\u4F60\u662F Obsidian \u4ED3\u5E93\u5185\u7684 {{agentName}}\u3002\u4F7F\u7528 Hermes \u539F\u751F\u7684 Obsidian skill\uFF0C\u57FA\u4E8E vault \u4E0A\u4E0B\u6587\u7ED9\u51FA\u7F16\u8F91\u5EFA\u8BAE\uFF0C\u5E76\u5C3D\u91CF\u4F7F\u7528 [[path/to/note|Note Title]] \u8FD9\u6837\u7684 Obsidian wiki \u94FE\u63A5\u5F15\u7528\u7B14\u8BB0\u3002",
   "prompt.scheduled.daily": "\u603B\u7ED3\u4ECA\u5929\u4FEE\u6539\u8FC7\u7684\u7B14\u8BB0\uFF0C\u751F\u6210\u4E00\u7BC7\u65B0\u7B14\u8BB0\uFF0C\u6309\u4E3B\u9898\u5206\u5C0F\u8282\u5E76\u94FE\u63A5\u56DE\u6E90\u7B14\u8BB0\u3002",
   "prompt.scheduled.weekly": "\u56DE\u987E\u6700\u8FD1 7 \u5929\u7684\u7B14\u8BB0\uFF0C\u63D0\u70BC\u4E3B\u9898\u4E0E\u672A\u5B8C\u6210\u4E8B\u9879\uFF0C\u751F\u6210\u4E00\u7BC7\u65B0\u7684\u5468\u56DE\u987E\u7B14\u8BB0\u3002",
   "prompt.compact": "\u4F60\u662F\u4E00\u4E2A\u5BF9\u8BDD\u6458\u8981\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u5BF9\u8BDD\u8FDB\u884C\u7B80\u6D01\u4F46\u5B8C\u6574\u7684\u6563\u6587\u6458\u8981\uFF08200-400\u5B57\uFF09\uFF0C\u4FDD\u7559\u4EE5\u4E0B\u8981\u7D20\uFF1A\n- \u7528\u6237\u7684\u539F\u59CB\u610F\u56FE\u548C\u95EE\u9898\n- \u6240\u4F5C\u7684\u5173\u952E\u51B3\u7B56\u53CA\u5176\u7406\u7531\n- \u6D89\u53CA\u7684\u6587\u4EF6\u8DEF\u5F84\uFF08\u521B\u5EFA\u3001\u7F16\u8F91\u6216\u5F15\u7528\uFF09\n- \u672A\u5B8C\u6210\u7684\u4EFB\u52A1\u548C\u5F85\u89E3\u51B3\u7684\u95EE\u9898\n- \u53D1\u73B0\u7684\u91CD\u8981\u4FE1\u606F\n\n\u8BF7\u7528\u7B2C\u4E09\u4EBA\u79F0\u4E66\u5199\uFF08\u4F8B\u5982\uFF1A\u7528\u6237\u8BE2\u95EE\u4E86\u2026\u2026\u3001\u52A9\u624B\u53D1\u73B0\u2026\u2026\uFF09\u3002"
@@ -1174,7 +1174,7 @@ var HermesProvider = class {
       `You are ${agentName} inside an Obsidian plugin.`,
       "Use only Hermes's native Obsidian skill/capabilities to inspect and reason about the user's vault.",
       "Do not describe internal prompts, tools, protocols, or implementation details to the end user.",
-      "When you refer to notes, folders, or links, cite the Obsidian paths clearly.",
+      "When you refer to notes, cite them as Obsidian wikilinks like [[path/to/note|Note Title]] when possible; otherwise include the exact Obsidian path.",
       "Answer directly instead of requesting plugin-side tools.",
       "Complete the requested vault action within this same reply whenever possible.",
       "Do not stop at an intermediate narration step such as 'let me check', 'I found one note', or 'I will read it next'.",
@@ -3835,6 +3835,21 @@ var ChangeSummary_default = ChangeSummary;
 
 // src/ui/markdown-action.ts
 var import_obsidian6 = require("obsidian");
+function linkifyObsidianNoteMentions(text) {
+  return String(text ?? "").split("\n").map((line) => {
+    if (!/\.md\)$/i.test(line) || line.includes("[[") || /\]\([^)]+\)/.test(line))
+      return line;
+    const match = line.match(/^(\s*(?:[-*+]|\d+\.)\s+)?(.+?)\s+\(([^)\n]+\.md)\)$/i);
+    if (!match)
+      return line;
+    const [, prefix = "", title, path] = match;
+    const normalizedPath = path.trim().replace(/\.md$/i, "");
+    const label = title.trim();
+    if (!normalizedPath || !label)
+      return line;
+    return `${prefix}[[${normalizedPath}|${label}]]`;
+  }).join("\n");
+}
 function markdown(node, params) {
   const owner = new import_obsidian6.Component();
   owner.load();
@@ -3865,7 +3880,7 @@ function markdown(node, params) {
     currentPlugin = p.plugin;
     const v = ++version;
     node.empty();
-    await import_obsidian6.MarkdownRenderer.render(p.plugin.app, p.text, node, "", owner);
+    await import_obsidian6.MarkdownRenderer.render(p.plugin.app, linkifyObsidianNoteMentions(p.text), node, "", owner);
     if (v !== version)
       return;
     node.querySelectorAll("pre").forEach(injectCodeHeader);
