@@ -52,6 +52,20 @@ Example:
 
 Configure both options in Obsidian under Settings → Community plugins → Hermes Agent.
 
+### Agent Name
+Display name used in the chat UI and prompts.
+
+Default: `Hermes`
+
+Examples:
+```text
+Hermes
+Mia
+Atlas
+```
+
+This changes how the assistant is labeled in the chat interface and prompt text. It does not rename the underlying `hermes` CLI binary or backend provider.
+
 ### SSH Host
 Used only in `SSH Remote CLI` mode.
 

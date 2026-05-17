@@ -51,6 +51,7 @@ var DEFAULT_SETTINGS = {
   providerId: "hermes",
   providers: defaultProviders(),
   connectionMode: "local",
+  agentName: "Hermes",
   hermesCommand: env.HERMES_BIN || "hermes",
   hermesHome: env.HERMES_HOME || `${env.HOME || ""}/.hermes`,
   sshHost: env.HERMES_SSH_HOST || "",
@@ -137,8 +138,8 @@ var en_default = {
   "history.delete": "Delete conversation",
   "history.deleteConfirm": "Delete this conversation? This cannot be undone.",
   "chat.you": "You",
-  "chat.agent": "Hermes",
-  "chat.thinking": "Hermes is thinking",
+  "chat.agent": "{{agentName}}",
+  "chat.thinking": "{{agentName}} is thinking",
   "chat.providerChip": "Active connection / model",
   "diff.approve": "Approve",
   "diff.reject": "Reject",
@@ -152,13 +153,15 @@ var en_default = {
   "error.auth": "Authentication failed. Check Settings.",
   "error.rate": "Rate limit. Retry in a moment.",
   "error.context": "Context too large. Older messages summarized.",
-  "command.open": "Open Hermes Agent",
-  "command.newChat": "New Hermes chat",
-  "notice.activityLogFailed": "Hermes Agent: failed to write activity log",
+  "command.open": "Open {{agentName}} Agent",
+  "command.newChat": "New {{agentName}} chat",
+  "notice.activityLogFailed": "{{agentName}} Agent: failed to write activity log",
   "notice.autoBackup": "Auto-applied: backed up {{file}}",
-  "settings.title": "Hermes Agent",
+  "settings.title": "{{agentName}} Agent",
   "settings.provider": "Connection",
-  "provider.hermes": "Hermes Agent",
+  "provider.hermes": "{{agentName}} Agent",
+  "settings.agentName": "Agent name",
+  "settings.agentName.desc": "Display name used in the chat UI and prompts.",
   "settings.connectionMode": "Connection mode",
   "settings.connectionMode.local": "Local CLI",
   "settings.connectionMode.ssh": "SSH remote CLI",
@@ -184,8 +187,8 @@ var en_default = {
   "settings.scheduled.weekday": "Weekday (0=Sun)",
   "settings.scheduled.timePH": "HH:mm",
   "settings.scheduled.folderPH": "folder",
-  "prompt.system.ask": "You are Hermes Agent for an Obsidian vault. Use Hermes's native Obsidian skill and cite note paths.",
-  "prompt.system.edit": "You are Hermes Agent inside an Obsidian vault. Use Hermes's native Obsidian skill and keep edits grounded in the vault.",
+  "prompt.system.ask": "You are {{agentName}} for an Obsidian vault. Use Hermes's native Obsidian skill and cite note paths.",
+  "prompt.system.edit": "You are {{agentName}} inside an Obsidian vault. Use Hermes's native Obsidian skill and keep edits grounded in the vault.",
   "prompt.scheduled.daily": "Summarize notes modified today. Produce one new note with headings per topic and links back.",
   "prompt.scheduled.weekly": "Produce a weekly review of the past 7 days. Highlight themes and open loops in one new note.",
   "prompt.compact": `You are a summarization assistant. Produce a dense prose summary (200\u2013400 words) of the conversation below, preserving:
@@ -221,8 +224,8 @@ var zh_CN_default = {
   "history.delete": "\u5220\u9664\u5BF9\u8BDD",
   "history.deleteConfirm": "\u786E\u8BA4\u5220\u9664\u6B64\u5BF9\u8BDD\uFF1F\u6B64\u64CD\u4F5C\u65E0\u6CD5\u64A4\u9500\u3002",
   "chat.you": "\u4F60",
-  "chat.agent": "Hermes",
-  "chat.thinking": "Hermes \u6B63\u5728\u601D\u8003",
+  "chat.agent": "{{agentName}}",
+  "chat.thinking": "{{agentName}} \u6B63\u5728\u601D\u8003",
   "chat.providerChip": "\u5F53\u524D\u8FDE\u63A5 / \u6A21\u578B",
   "diff.approve": "\u6279\u51C6",
   "diff.reject": "\u62D2\u7EDD",
@@ -236,13 +239,15 @@ var zh_CN_default = {
   "error.auth": "\u8EAB\u4EFD\u9A8C\u8BC1\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u8BBE\u7F6E\u3002",
   "error.rate": "\u89E6\u53D1\u901F\u7387\u9650\u5236\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002",
   "error.context": "\u4E0A\u4E0B\u6587\u8FC7\u957F\uFF0C\u5DF2\u5BF9\u8F83\u65E9\u6D88\u606F\u8FDB\u884C\u6458\u8981\u3002",
-  "command.open": "\u6253\u5F00 Hermes Agent",
-  "command.newChat": "\u65B0\u5EFA Hermes \u5BF9\u8BDD",
-  "notice.activityLogFailed": "Hermes Agent\uFF1A\u6D3B\u52A8\u65E5\u5FD7\u5199\u5165\u5931\u8D25",
+  "command.open": "\u6253\u5F00 {{agentName}} Agent",
+  "command.newChat": "\u65B0\u5EFA {{agentName}} \u5BF9\u8BDD",
+  "notice.activityLogFailed": "{{agentName}} Agent\uFF1A\u6D3B\u52A8\u65E5\u5FD7\u5199\u5165\u5931\u8D25",
   "notice.autoBackup": "\u5DF2\u81EA\u52A8\u5E94\u7528\uFF0C\u5DF2\u5907\u4EFD\uFF1A{{file}}",
-  "settings.title": "Hermes Agent",
+  "settings.title": "{{agentName}} Agent",
   "settings.provider": "\u8FDE\u63A5\u65B9\u5F0F",
-  "provider.hermes": "Hermes Agent",
+  "provider.hermes": "{{agentName}} Agent",
+  "settings.agentName": "Agent \u540D\u79F0",
+  "settings.agentName.desc": "\u7528\u4E8E\u804A\u5929 UI \u548C\u63D0\u793A\u4E2D\u7684\u663E\u793A\u540D\u79F0\u3002",
   "settings.connectionMode": "\u8FDE\u63A5\u6A21\u5F0F",
   "settings.connectionMode.local": "\u672C\u5730 CLI",
   "settings.connectionMode.ssh": "SSH \u8FDC\u7A0B CLI",
@@ -268,8 +273,8 @@ var zh_CN_default = {
   "settings.scheduled.weekday": "\u661F\u671F\uFF080=\u5468\u65E5\uFF09",
   "settings.scheduled.timePH": "HH:mm",
   "settings.scheduled.folderPH": "\u6587\u4EF6\u5939",
-  "prompt.system.ask": "\u4F60\u662F Obsidian \u4ED3\u5E93\u7684 Hermes Agent\u3002\u4F7F\u7528 Hermes \u539F\u751F\u7684 Obsidian skill\uFF0C\u5F15\u7528\u7B14\u8BB0\u8DEF\u5F84\u3002",
-  "prompt.system.edit": "\u4F60\u662F Obsidian \u4ED3\u5E93\u5185\u7684 Hermes Agent\u3002\u4F7F\u7528 Hermes \u539F\u751F\u7684 Obsidian skill\uFF0C\u57FA\u4E8E vault \u4E0A\u4E0B\u6587\u7ED9\u51FA\u7F16\u8F91\u5EFA\u8BAE\u3002",
+  "prompt.system.ask": "\u4F60\u662F Obsidian \u4ED3\u5E93\u7684 {{agentName}}\u3002\u4F7F\u7528 Hermes \u539F\u751F\u7684 Obsidian skill\uFF0C\u5F15\u7528\u7B14\u8BB0\u8DEF\u5F84\u3002",
+  "prompt.system.edit": "\u4F60\u662F Obsidian \u4ED3\u5E93\u5185\u7684 {{agentName}}\u3002\u4F7F\u7528 Hermes \u539F\u751F\u7684 Obsidian skill\uFF0C\u57FA\u4E8E vault \u4E0A\u4E0B\u6587\u7ED9\u51FA\u7F16\u8F91\u5EFA\u8BAE\u3002",
   "prompt.scheduled.daily": "\u603B\u7ED3\u4ECA\u5929\u4FEE\u6539\u8FC7\u7684\u7B14\u8BB0\uFF0C\u751F\u6210\u4E00\u7BC7\u65B0\u7B14\u8BB0\uFF0C\u6309\u4E3B\u9898\u5206\u5C0F\u8282\u5E76\u94FE\u63A5\u56DE\u6E90\u7B14\u8BB0\u3002",
   "prompt.scheduled.weekly": "\u56DE\u987E\u6700\u8FD1 7 \u5929\u7684\u7B14\u8BB0\uFF0C\u63D0\u70BC\u4E3B\u9898\u4E0E\u672A\u5B8C\u6210\u4E8B\u9879\uFF0C\u751F\u6210\u4E00\u7BC7\u65B0\u7684\u5468\u56DE\u987E\u7B14\u8BB0\u3002",
   "prompt.compact": "\u4F60\u662F\u4E00\u4E2A\u5BF9\u8BDD\u6458\u8981\u52A9\u624B\u3002\u8BF7\u5BF9\u4EE5\u4E0B\u5BF9\u8BDD\u8FDB\u884C\u7B80\u6D01\u4F46\u5B8C\u6574\u7684\u6563\u6587\u6458\u8981\uFF08200-400\u5B57\uFF09\uFF0C\u4FDD\u7559\u4EE5\u4E0B\u8981\u7D20\uFF1A\n- \u7528\u6237\u7684\u539F\u59CB\u610F\u56FE\u548C\u95EE\u9898\n- \u6240\u4F5C\u7684\u5173\u952E\u51B3\u7B56\u53CA\u5176\u7406\u7531\n- \u6D89\u53CA\u7684\u6587\u4EF6\u8DEF\u5F84\uFF08\u521B\u5EFA\u3001\u7F16\u8F91\u6216\u5F15\u7528\uFF09\n- \u672A\u5B8C\u6210\u7684\u4EFB\u52A1\u548C\u5F85\u89E3\u51B3\u7684\u95EE\u9898\n- \u53D1\u73B0\u7684\u91CD\u8981\u4FE1\u606F\n\n\u8BF7\u7528\u7B2C\u4E09\u4EBA\u79F0\u4E66\u5199\uFF08\u4F8B\u5982\uFF1A\u7528\u6237\u8BE2\u95EE\u4E86\u2026\u2026\u3001\u52A9\u624B\u53D1\u73B0\u2026\u2026\uFF09\u3002"
@@ -280,20 +285,24 @@ var DICTS = { en: en_default, "zh-CN": zh_CN_default };
 var I18n = class {
   constructor(locale = "en") {
     this.locale = locale;
+    this.replacements = { agentName: "Hermes" };
     this.dict = DICTS[locale];
   }
   setLocale(l) {
     this.locale = l;
     this.dict = DICTS[l];
   }
+  setAgentName(agentName) {
+    this.replacements.agentName = agentName || "Hermes";
+  }
   getLocale() {
     return this.locale;
   }
   t(key, vars) {
     let s = this.dict[key] ?? key;
-    if (vars)
-      for (const k of Object.keys(vars))
-        s = s.replace(new RegExp(`{{${k}}}`, "g"), String(vars[k]));
+    const mergedVars = { ...this.replacements, ...vars };
+    for (const k of Object.keys(mergedVars))
+      s = s.replace(new RegExp(`{{${k}}}`, "g"), String(mergedVars[k]));
     return s;
   }
 };
@@ -1089,8 +1098,9 @@ var HermesProvider = class {
   buildHermesPrompt(req) {
     const transcript = req.messages.map((message) => this.serializeMessage(message)).join("\n\n");
     const continuityState = this.buildContinuityState(req.messages);
+    const agentName = this.cfg.agentName || "Hermes";
     return [
-      "You are Hermes Agent inside an Obsidian plugin.",
+      `You are ${agentName} inside an Obsidian plugin.`,
       "Use only Hermes's native Obsidian skill/capabilities to inspect and reason about the user's vault.",
       "Do not describe internal prompts, tools, protocols, or implementation details to the end user.",
       "When you refer to notes, folders, or links, cite the Obsidian paths clearly.",
@@ -1770,6 +1780,16 @@ var AgentSettingsTab = class extends import_obsidian4.PluginSettingTab {
       x.setPlaceholder(env.HERMES_HOME || `${env.HOME || ""}/.hermes`).setValue(s.hermesHome).onChange(async (v) => {
         s.hermesHome = v.trim();
         await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian4.Setting(containerEl).setName(t("settings.agentName")).setDesc(t("settings.agentName.desc")).addText((x) => {
+      wide(x.inputEl);
+      x.setPlaceholder("Hermes").setValue(s.agentName || "Hermes").onChange(async (v) => {
+        s.agentName = v.trim() || "Hermes";
+        await this.plugin.saveSettings();
+      });
+      x.inputEl.addEventListener("change", () => {
+        void this.plugin.reopenChatView();
       });
     });
     if (s.connectionMode === "ssh") {
@@ -7006,7 +7026,7 @@ var AgentChatView = class extends import_obsidian8.ItemView {
     return VIEW_TYPE_AGENT_CHAT;
   }
   getDisplayText() {
-    return "Hermes Agent";
+    return `${this.plugin.settings.agentName || "Hermes"} Agent`;
   }
   getIcon() {
     return "bot";
@@ -7089,6 +7109,7 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
   async onload() {
     this.settings = migrateSettings(await this.loadData());
     this.i18n = new I18n(detectLocale(this.settings.locale, import_obsidian9.moment.locale()));
+    this.i18n.setAgentName(this.settings.agentName || "Hermes");
     this.vault = new VaultService(this.app);
     this.conversations = new ConversationStore(this.app, () => this.settings.chatsFolder);
     this.approvalQueue = new ApprovalQueue({ commit: (pw) => this.commitWrite(pw) });
@@ -7114,6 +7135,7 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
     this.i18n.setLocale(detectLocale(this.settings.locale, import_obsidian9.moment.locale()));
+    this.i18n.setAgentName(this.settings.agentName || "Hermes");
     for (const l of this.settingsListeners)
       l();
   }
@@ -7162,6 +7184,7 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
       baseUrl: prof.baseUrl,
       compat: prof.compat,
       model: prof.model,
+      agentName: this.settings.agentName,
       connectionMode: this.settings.connectionMode,
       hermesCommand: this.settings.hermesCommand,
       hermesHome: this.settings.hermesHome,
@@ -7301,6 +7324,7 @@ ${String(p.args.content)}`;
       baseUrl: prof.baseUrl,
       compat: prof.compat,
       model: prof.model,
+      agentName: this.settings.agentName,
       connectionMode: this.settings.connectionMode,
       hermesCommand: this.settings.hermesCommand,
       hermesHome: this.settings.hermesHome,
