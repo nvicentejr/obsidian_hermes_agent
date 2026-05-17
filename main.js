@@ -35,6 +35,7 @@ var env = globalThis.process?.env ?? {};
 var PROVIDER_DEFAULTS = {
   hermes: { baseUrl: "", model: "hermes" }
 };
+var HERMES_API_DEFAULT_BASE_URL = "http://127.0.0.1:8642/v1";
 function defaultProfile(id) {
   const d = PROVIDER_DEFAULTS[id];
   return { apiKey: "", baseUrl: "", model: d.model };
@@ -165,6 +166,7 @@ var en_default = {
   "settings.connectionMode": "Connection mode",
   "settings.connectionMode.local": "Local CLI",
   "settings.connectionMode.ssh": "SSH remote CLI",
+  "settings.connectionMode.api": "API server",
   "settings.hermesCommand": "Hermes executable path",
   "settings.hermesHome": "Hermes home path",
   "settings.sshHost": "SSH host",
@@ -172,6 +174,18 @@ var en_default = {
   "settings.sshUser": "SSH user",
   "settings.sshHermesCommand": "Remote Hermes executable path",
   "settings.sshHermesHome": "Remote Hermes home path",
+  "settings.apiBaseUrl": "API server base URL",
+  "settings.apiBaseUrl.desc": "OpenAI-compatible Hermes endpoint, usually http://127.0.0.1:8642/v1.",
+  "settings.apiKey": "API server key",
+  "settings.apiKey.desc": "Bearer token from API_SERVER_KEY.",
+  "settings.apiModel": "API model name",
+  "settings.apiModel.desc": "Model name sent to the Hermes API server. hermes-agent matches the docs.",
+  "settings.apiTest": "API connection test",
+  "settings.apiTest.desc": "Check whether the configured Hermes API server is reachable and authenticated.",
+  "settings.apiTest.button": "Test connection",
+  "settings.apiTest.testing": "Testing...",
+  "notice.apiTestSuccess": "Hermes API connected: {{models}}",
+  "notice.apiTestFailure": "Hermes API connection failed: {{message}}",
   "settings.timeout": "Request timeout (seconds)",
   "settings.timeout.desc": "Max time to wait for a single LLM response. Increase for slow providers.",
   "settings.defaultMode": "Default mode",
@@ -251,6 +265,7 @@ var zh_CN_default = {
   "settings.connectionMode": "\u8FDE\u63A5\u6A21\u5F0F",
   "settings.connectionMode.local": "\u672C\u5730 CLI",
   "settings.connectionMode.ssh": "SSH \u8FDC\u7A0B CLI",
+  "settings.connectionMode.api": "API \u670D\u52A1\u5668",
   "settings.hermesCommand": "Hermes \u53EF\u6267\u884C\u6587\u4EF6\u8DEF\u5F84",
   "settings.hermesHome": "Hermes \u4E3B\u76EE\u5F55",
   "settings.sshHost": "SSH \u4E3B\u673A",
@@ -258,6 +273,18 @@ var zh_CN_default = {
   "settings.sshUser": "SSH \u7528\u6237",
   "settings.sshHermesCommand": "\u8FDC\u7A0B Hermes \u53EF\u6267\u884C\u6587\u4EF6\u8DEF\u5F84",
   "settings.sshHermesHome": "\u8FDC\u7A0B Hermes \u4E3B\u76EE\u5F55",
+  "settings.apiBaseUrl": "API \u670D\u52A1\u5668 Base URL",
+  "settings.apiBaseUrl.desc": "Hermes \u7684 OpenAI \u517C\u5BB9\u7AEF\u70B9\uFF0C\u901A\u5E38\u662F http://127.0.0.1:8642/v1\u3002",
+  "settings.apiKey": "API \u670D\u52A1\u5668 Key",
+  "settings.apiKey.desc": "\u6765\u81EA API_SERVER_KEY \u7684 Bearer token\u3002",
+  "settings.apiModel": "API \u6A21\u578B\u540D\u79F0",
+  "settings.apiModel.desc": "\u53D1\u9001\u7ED9 Hermes API \u670D\u52A1\u5668\u7684 model \u540D\u79F0\u3002hermes-agent \u4E0E\u6587\u6863\u4E00\u81F4\u3002",
+  "settings.apiTest": "API \u8FDE\u63A5\u6D4B\u8BD5",
+  "settings.apiTest.desc": "\u68C0\u67E5\u5F53\u524D\u914D\u7F6E\u7684 Hermes API \u670D\u52A1\u5668\u662F\u5426\u53EF\u8FBE\u4E14\u8BA4\u8BC1\u6B63\u5E38\u3002",
+  "settings.apiTest.button": "\u6D4B\u8BD5\u8FDE\u63A5",
+  "settings.apiTest.testing": "\u6D4B\u8BD5\u4E2D...",
+  "notice.apiTestSuccess": "Hermes API \u5DF2\u8FDE\u63A5\uFF1A{{models}}",
+  "notice.apiTestFailure": "Hermes API \u8FDE\u63A5\u5931\u8D25\uFF1A{{message}}",
   "settings.timeout": "\u8BF7\u6C42\u8D85\u65F6\uFF08\u79D2\uFF09",
   "settings.timeout.desc": "\u7B49\u5F85\u5355\u6B21 LLM \u54CD\u5E94\u7684\u6700\u957F\u65F6\u95F4\u3002\u63D0\u4F9B\u5546\u8F83\u6162\u65F6\u53EF\u9002\u5F53\u8C03\u9AD8\u3002",
   "settings.defaultMode": "\u9ED8\u8BA4\u6A21\u5F0F",
@@ -1073,6 +1100,10 @@ var HermesProvider = class {
   }
   async *chat(req) {
     try {
+      if (this.cfg.connectionMode === "api") {
+        yield* this.runApiHermes(req);
+        return;
+      }
       const prompt = this.shouldUseRawPrompt(req.messages) ? this.buildRawPrompt(req.messages) : this.buildHermesPrompt(req);
       const output = await this.runHermes(prompt, req.signal);
       const parsed = this.parseHermesResponse(output);
@@ -1092,6 +1123,46 @@ var HermesProvider = class {
       }
     } catch (error) {
       yield { type: "error", error: this.toProviderError(error) };
+    }
+    yield { type: "done" };
+  }
+  async *runApiHermes(req) {
+    const prompt = this.shouldUseRawPrompt(req.messages) ? this.buildRawPrompt(req.messages) : this.buildHermesPrompt(req);
+    const response = await this.requestHermesApi(
+      "/chat/completions",
+      {
+        model: req.model || this.cfg.model || "hermes-agent",
+        messages: [{ role: "user", content: prompt }],
+        tools: req.tools.length ? req.tools.map((tool) => ({ type: "function", function: tool })) : void 0,
+        stream: false,
+        temperature: req.temperature
+      },
+      req.signal
+    );
+    const message = response?.choices?.[0]?.message;
+    if (message?.reasoning_content) {
+      yield { type: "reasoning", text: String(message.reasoning_content) };
+    }
+    if (message?.content) {
+      yield { type: "text", text: String(message.content) };
+    }
+    for (const toolCall of message?.tool_calls ?? []) {
+      let args = {};
+      try {
+        args = JSON.parse(toolCall?.function?.arguments || "{}");
+      } catch {
+        args = { _raw: toolCall?.function?.arguments || "" };
+      }
+      if (toolCall?.function?.name) {
+        yield {
+          type: "tool_call",
+          toolCall: {
+            id: toolCall.id ?? `hermes_tc_${Date.now()}`,
+            name: toolCall.function.name,
+            args
+          }
+        };
+      }
     }
     yield { type: "done" };
   }
@@ -1206,6 +1277,79 @@ var HermesProvider = class {
     commandParts.push(`${this.escapeShellArg(this.cfg.sshHermesCommand || "hermes")} chat -q ${this.escapeShellArg(prompt)}`);
     return commandParts.join(" && ");
   }
+  normalizeApiBaseUrl(baseUrl) {
+    const value = String(baseUrl || HERMES_API_DEFAULT_BASE_URL).trim() || HERMES_API_DEFAULT_BASE_URL;
+    return value.replace(/\/$/, "");
+  }
+  toOpenAIMsg(message) {
+    if (message.role === "tool") {
+      return { role: "tool", tool_call_id: message.toolCallId, content: message.content };
+    }
+    if (message.role === "assistant" && message.toolCalls?.length) {
+      return {
+        role: "assistant",
+        content: message.content || null,
+        reasoning_content: message.reasoningContent || void 0,
+        tool_calls: message.toolCalls.map((toolCall) => ({
+          id: toolCall.id,
+          type: "function",
+          function: { name: toolCall.name, arguments: JSON.stringify(toolCall.args) }
+        }))
+      };
+    }
+    if (message.role === "assistant" && message.reasoningContent) {
+      return { role: "assistant", content: message.content || null, reasoning_content: message.reasoningContent };
+    }
+    return { role: message.role, content: message.content };
+  }
+  async requestHermesApi(path, body, signal) {
+    const baseUrl = this.normalizeApiBaseUrl(this.cfg.baseUrl);
+    const headers = { "content-type": "application/json" };
+    if (this.cfg.apiKey) {
+      headers.authorization = `Bearer ${this.cfg.apiKey}`;
+    }
+    const request = import_obsidian3.requestUrl({
+      url: `${baseUrl}${path}`,
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      throw: false
+    });
+    const response = await this.awaitHermesApiRequest(request, signal);
+    if (response.status === 401 || response.status === 403) {
+      throw new ProviderError("auth", `${response.status}`);
+    }
+    if (response.status === 429) {
+      throw new ProviderError("rate", `Rate limited: ${parseRateMsg(response.text || "")}`);
+    }
+    if (response.status >= 400) {
+      const text = response.text || "";
+      if (/context|too long/i.test(text)) {
+        throw new ProviderError("context", text);
+      }
+      throw new ProviderError("unknown", `${response.status}: ${text}`);
+    }
+    return response.json;
+  }
+  async awaitHermesApiRequest(request, signal) {
+    if (!signal) {
+      return request;
+    }
+    if (signal.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+    return await new Promise((resolve, reject) => {
+      const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
+      signal.addEventListener("abort", onAbort, { once: true });
+      request.then((result) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(result);
+      }, (error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      });
+    });
+  }
   escapeShellArg(value) {
     return `'${String(value).replace(/'/g, `'"'"'`)}'`;
   }
@@ -1285,9 +1429,10 @@ var HermesProvider = class {
     const message = String(error?.message ?? error ?? "Unknown Hermes error");
     if (error?.name === "AbortError" || error?.code === "ABORT_ERR" || error?.code === "ETIMEDOUT" || /operation was aborted|aborted|timed out/i.test(message)) {
       const timeoutMs = this.cfg.timeoutMs || 3e5;
+      const transport = this.cfg.connectionMode === "api" ? "the Hermes API server" : this.cfg.connectionMode === "ssh" ? "the remote Hermes CLI" : "the Hermes CLI";
       return {
         kind: "timeout",
-        message: `Request timed out after ${Math.round(timeoutMs / 1e3)}s - the Hermes CLI did not finish in time. Try again or increase the timeout in plugin settings.`
+        message: `Request timed out after ${Math.round(timeoutMs / 1e3)}s - ${transport} did not finish in time. Try again or increase the timeout in plugin settings.`
       };
     }
     if (/401|403|authentication|unauthorized|forbidden/i.test(message)) {
@@ -1751,6 +1896,7 @@ var AgentSettingsTab = class extends import_obsidian4.PluginSettingTab {
     containerEl.empty();
     const s = this.plugin.settings;
     const t = this.plugin.i18n.t.bind(this.plugin.i18n);
+    const profile = s.providers[s.providerId] ?? (s.providers[s.providerId] = defaultProfile(s.providerId));
     const wide = (el) => {
       el.style.width = `100%`;
       const control = el.closest(".setting-item-control");
@@ -1761,27 +1907,29 @@ var AgentSettingsTab = class extends import_obsidian4.PluginSettingTab {
     };
     new import_obsidian4.Setting(containerEl).setName("").setHeading();
     new import_obsidian4.Setting(containerEl).setName(t("settings.provider")).setDesc(t("provider.hermes")).addDropdown((d) => {
-      d.addOption("local", t("settings.connectionMode.local")).addOption("ssh", t("settings.connectionMode.ssh"));
+      d.addOption("local", t("settings.connectionMode.local")).addOption("ssh", t("settings.connectionMode.ssh")).addOption("api", t("settings.connectionMode.api"));
       d.setValue(s.connectionMode).onChange(async (v) => {
         s.connectionMode = v;
         await this.plugin.saveSettings();
         this.display();
       });
     });
-    new import_obsidian4.Setting(containerEl).setName(t("settings.hermesCommand")).addText((x) => {
-      wide(x.inputEl);
-      x.setPlaceholder("hermes").setValue(s.hermesCommand).onChange(async (v) => {
-        s.hermesCommand = v.trim() || "hermes";
-        await this.plugin.saveSettings();
+    if (s.connectionMode === "local") {
+      new import_obsidian4.Setting(containerEl).setName(t("settings.hermesCommand")).addText((x) => {
+        wide(x.inputEl);
+        x.setPlaceholder("hermes").setValue(s.hermesCommand).onChange(async (v) => {
+          s.hermesCommand = v.trim() || "hermes";
+          await this.plugin.saveSettings();
+        });
       });
-    });
-    new import_obsidian4.Setting(containerEl).setName(t("settings.hermesHome")).addText((x) => {
-      wide(x.inputEl);
-      x.setPlaceholder(env.HERMES_HOME || `${env.HOME || ""}/.hermes`).setValue(s.hermesHome).onChange(async (v) => {
-        s.hermesHome = v.trim();
-        await this.plugin.saveSettings();
+      new import_obsidian4.Setting(containerEl).setName(t("settings.hermesHome")).addText((x) => {
+        wide(x.inputEl);
+        x.setPlaceholder(env.HERMES_HOME || `${env.HOME || ""}/.hermes`).setValue(s.hermesHome).onChange(async (v) => {
+          s.hermesHome = v.trim();
+          await this.plugin.saveSettings();
+        });
       });
-    });
+    }
     new import_obsidian4.Setting(containerEl).setName(t("settings.agentName")).setDesc(t("settings.agentName.desc")).addText((x) => {
       wide(x.inputEl);
       x.setPlaceholder("Hermes").setValue(s.agentName || "Hermes").onChange(async (v) => {
@@ -1792,6 +1940,42 @@ var AgentSettingsTab = class extends import_obsidian4.PluginSettingTab {
         void this.plugin.reopenChatView();
       });
     });
+    if (s.connectionMode === "api") {
+      new import_obsidian4.Setting(containerEl).setName(t("settings.apiBaseUrl")).setDesc(t("settings.apiBaseUrl.desc")).addText((x) => {
+        wide(x.inputEl);
+        x.setPlaceholder(HERMES_API_DEFAULT_BASE_URL).setValue(profile.baseUrl || "").onChange(async (v) => {
+          profile.baseUrl = v.trim();
+          await this.plugin.saveSettings();
+        });
+      });
+      new import_obsidian4.Setting(containerEl).setName(t("settings.apiKey")).setDesc(t("settings.apiKey.desc")).addText((x) => {
+        wide(x.inputEl);
+        x.inputEl.type = "password";
+        x.setPlaceholder("API_SERVER_KEY").setValue(profile.apiKey || "").onChange(async (v) => {
+          profile.apiKey = v.trim();
+          await this.plugin.saveSettings();
+        });
+      });
+      new import_obsidian4.Setting(containerEl).setName(t("settings.apiModel")).setDesc(t("settings.apiModel.desc")).addText((x) => {
+        wide(x.inputEl);
+        x.setPlaceholder("hermes-agent").setValue(profile.model || "").onChange(async (v) => {
+          profile.model = v.trim() || "hermes-agent";
+          await this.plugin.saveSettings();
+        });
+      });
+      new import_obsidian4.Setting(containerEl).setName(t("settings.apiTest")).setDesc(t("settings.apiTest.desc")).addButton((btn) => {
+        btn.setButtonText(t("settings.apiTest.button")).onClick(async () => {
+          btn.setDisabled(true);
+          btn.setButtonText(t("settings.apiTest.testing"));
+          try {
+            await this.plugin.testHermesApiConnection();
+          } finally {
+            btn.setDisabled(false);
+            btn.setButtonText(t("settings.apiTest.button"));
+          }
+        });
+      });
+    }
     if (s.connectionMode === "ssh") {
       new import_obsidian4.Setting(containerEl).setName(t("settings.sshHost")).addText((x) => {
         wide(x.inputEl);
@@ -7397,6 +7581,50 @@ ${String(p.args.content)}`;
     for (const leaf of leaves)
       leaf.detach();
     await this.activateView();
+  }
+  async testHermesApiConnection() {
+    const profile = activeProfile(this.settings);
+    const baseUrl = String(profile.baseUrl || HERMES_API_DEFAULT_BASE_URL).trim().replace(/\/$/, "") || HERMES_API_DEFAULT_BASE_URL;
+    const controller = new AbortController();
+    const timeoutMs = this.settings.turnTimeoutMs || 3e5;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const headers = { accept: "application/json" };
+      if (profile.apiKey) {
+        headers.authorization = `Bearer ${profile.apiKey}`;
+      }
+      const request = import_obsidian9.requestUrl({
+        url: `${baseUrl}/models`,
+        method: "GET",
+        headers,
+        throw: false
+      });
+      const resp = await new Promise((resolve, reject) => {
+        const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
+        controller.signal.addEventListener("abort", onAbort, { once: true });
+        request.then((result) => {
+          controller.signal.removeEventListener("abort", onAbort);
+          resolve(result);
+        }, (error) => {
+          controller.signal.removeEventListener("abort", onAbort);
+          reject(error);
+        });
+      });
+      const data = resp.json ?? {};
+      if (resp.status < 200 || resp.status >= 300) {
+        const detail = typeof resp.text === "string" && resp.text ? resp.text : data?.error?.message || data?.error || data?.message || `${resp.status}`;
+        throw new Error(`HTTP ${resp.status}${detail ? ` - ${String(detail)}` : ""}`);
+      }
+      const models = Array.isArray(data?.data) ? data.data.map((entry) => entry?.id).filter((id) => typeof id === "string" && id.trim()) : [];
+      new import_obsidian9.Notice(this.i18n.t("notice.apiTestSuccess", {
+        models: models.length ? models.join(", ") : "connected"
+      }), 6e3);
+    } catch (error) {
+      const message = error?.name === "AbortError" ? `timed out after ${Math.round(timeoutMs / 1e3)}s` : String(error?.message ?? error ?? "Unknown error");
+      new import_obsidian9.Notice(this.i18n.t("notice.apiTestFailure", { message }), 8e3);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 };
 function simpleDiff(a, b) {

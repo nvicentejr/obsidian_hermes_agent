@@ -28,6 +28,7 @@ Choose how the plugin talks to Hermes.
 
 - `Local CLI`: Runs the local `hermes` command on your machine
 - `SSH Remote CLI`: Connects to a remote machine over SSH and runs the Hermes CLI there
+- `API Server`: Connects to Hermes through its OpenAI-compatible HTTP API
 
 ### Hermes Executable Path
 Path to the Hermes CLI executable.
@@ -51,6 +52,25 @@ Example:
 ```
 
 Configure both options in Obsidian under Settings → Community plugins → Hermes Agent.
+
+### API Server Base URL
+Used only in `API Server` mode.
+
+Set this to the Hermes API server base URL, including `/v1`. The documented default is:
+
+```text
+http://127.0.0.1:8642/v1
+```
+
+### API Server Key
+Used only in `API Server` mode.
+
+Set this to the bearer token configured via `API_SERVER_KEY`.
+
+### API Model Name
+Used only in `API Server` mode.
+
+The plugin sends this as the `model` field to the Hermes API server. `hermes-agent` matches the official examples.
 
 ### Agent Name
 Display name used in the chat UI and prompts.
@@ -96,6 +116,23 @@ Important:
 - The plugin does not manage passwords or interactive SSH prompts
 - The remote machine must accept non-interactive `ssh` commands from the Obsidian host
 
+### Hermes API Server Setup
+
+According to the Hermes documentation, enable the API server in `~/.hermes/.env`:
+
+```bash
+API_SERVER_ENABLED=true
+API_SERVER_KEY=change-me-local-dev
+```
+
+Then start the gateway:
+
+```bash
+hermes gateway
+```
+
+By default Hermes listens on `http://127.0.0.1:8642`, so the plugin base URL should be `http://127.0.0.1:8642/v1`.
+
 ## Environment Variables
 
 You can also set these in your shell profile (`.bashrc`, `.zshrc`, etc.):
@@ -127,7 +164,7 @@ The chat behaves like a vault-aware agent:
 - `Ask` mode can search the vault, read notes, inspect backlinks and outgoing links, and use the active note/selection as context.
 - `Edit` mode can propose note changes and queue them for approval, similar to smart-note-agent.
 - `Hermes` mode skips the Obsidian-specific prompt wrapper so you can talk to Hermes more directly, closer to the Hermes TUI experience.
-- Hermes connectivity is provided through the local CLI or an SSH remote CLI.
+- Hermes connectivity is provided through the local CLI, an SSH remote CLI, or the Hermes API server.
 
 ### Chat Interface
 
@@ -145,7 +182,7 @@ The chat behaves like a vault-aware agent:
 
 ### Timeouts
 
-Hermes requests run through the local or remote CLI with a configurable timeout.
+Hermes requests run through the configured transport with a configurable timeout.
 
 If a request takes too long, the plugin reports a timeout message instead of a raw aborted-operation error. This is especially relevant for slower prompts, including prompts that ask Hermes to gather outside information.
 
@@ -173,8 +210,9 @@ If you hit timeouts often:
 
 1. Ensure the `hermes` CLI works in the same environment as Obsidian
 2. For SSH mode, verify non-interactive SSH access first
-3. Confirm the configured host, user, port, executable path, and home path
-4. If you see a timeout message, increase the request timeout in plugin settings and retry
+3. For API mode, verify `hermes gateway` is running and the configured base URL includes `/v1`
+4. Confirm the configured host, user, port, executable path, home path, or API key as appropriate
+5. If you see a timeout message, increase the request timeout in plugin settings and retry
 
 ### Notes not found
 
