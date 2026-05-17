@@ -121,6 +121,7 @@ var en_default = {
   "chat.new": "New chat",
   "chat.mode.ask": "Ask",
   "chat.mode.edit": "Edit",
+  "chat.mode.hermes": "Hermes",
   "chat.mode.aria": "Chat mode",
   "chat.autoApprove": "Auto approve",
   "chat.autoApprove.tooltip": "Automatically apply edits and back up originals",
@@ -204,6 +205,7 @@ var zh_CN_default = {
   "chat.new": "\u65B0\u5BF9\u8BDD",
   "chat.mode.ask": "\u63D0\u95EE",
   "chat.mode.edit": "\u7F16\u8F91",
+  "chat.mode.hermes": "Hermes",
   "chat.mode.aria": "\u5BF9\u8BDD\u6A21\u5F0F",
   "chat.autoApprove": "\u81EA\u52A8\u6279\u51C6",
   "chat.autoApprove.tooltip": "\u81EA\u52A8\u5E94\u7528\u7F16\u8F91\u5E76\u5907\u4EFD\u539F\u59CB\u6587\u4EF6",
@@ -1062,7 +1064,7 @@ var HermesProvider = class {
   }
   async *chat(req) {
     try {
-      const prompt = this.buildHermesPrompt(req);
+      const prompt = this.shouldUseRawPrompt(req.messages) ? this.buildRawPrompt(req.messages) : this.buildHermesPrompt(req);
       const output = await this.runHermes(prompt, req.signal);
       const parsed = this.parseHermesResponse(output);
       if (parsed.text) {
@@ -1104,6 +1106,16 @@ var HermesProvider = class {
       "Conversation so far:",
       transcript
     ].join("\n\n");
+  }
+  shouldUseRawPrompt(messages) {
+    return !messages.some((message) => message.role === "system" && String(message.content || "").trim());
+  }
+  buildRawPrompt(messages) {
+    return messages.filter((message) => {
+      if (message.role === "system")
+        return String(message.content || "").trim().length > 0;
+      return true;
+    }).map((message) => this.serializeMessage(message)).join("\n\n").trim();
   }
   buildContinuityState(messages) {
     const nonSystemMessages = messages.filter((message) => message.role !== "system" && message.role !== "tool");
@@ -1661,11 +1673,11 @@ var ContextManager = class {
   }
   // ── Helpers ───────────────────────────────────────────────────────────────
   buildCandidate(systemPrompt, conversation) {
-    const sysMsg = { role: "system", content: systemPrompt };
+    const sysMsgs = systemPrompt ? [{ role: "system", content: systemPrompt }] : [];
     const summaryMsg = conversation.summary ? { role: "system", content: conversation.summary } : null;
     const tailStart = (conversation.summarizedThroughIndex ?? -1) + 1;
     const tailMsgs = conversation.messages.slice(tailStart);
-    return [sysMsg, ...summaryMsg ? [summaryMsg] : [], ...tailMsgs];
+    return [...sysMsgs, ...summaryMsg ? [summaryMsg] : [], ...tailMsgs];
   }
 };
 function groupByTurns(messages) {
@@ -1712,6 +1724,8 @@ function systemPromptKey(mode) {
     return "prompt.system.ask";
   if (mode === "edit")
     return "prompt.system.edit";
+  if (mode === "hermes")
+    return "";
   return "prompt.scheduled.daily";
 }
 
@@ -5202,8 +5216,16 @@ function create_fragment4(ctx) {
   );
   let t4;
   let button1_aria_pressed_value;
-  let div0_aria_label_value;
   let t5;
+  let button2;
+  let t6_value = (
+    /*t*/
+    ctx[4]("chat.mode.hermes") + ""
+  );
+  let t6;
+  let button2_aria_pressed_value;
+  let div0_aria_label_value;
+  let t7;
   let mounted;
   let dispose;
   let if_block = (
@@ -5275,6 +5297,18 @@ function create_fragment4(ctx) {
         /*mode*/
         ctx[0] === "edit"
       );
+      button2 = element("button");
+      t6 = text(t6_value);
+      t7 = space();
+      attr(button2, "class", "mt-option svelte-fhtp07");
+      attr(button2, "aria-pressed", button2_aria_pressed_value = /*mode*/
+      ctx[0] === "hermes");
+      toggle_class(
+        button2,
+        "mt-active",
+        /*mode*/
+        ctx[0] === "hermes"
+      );
       attr(div0, "class", "mt-root svelte-fhtp07");
       attr(div0, "role", "group");
       attr(div0, "aria-label", div0_aria_label_value = /*t*/
@@ -5297,7 +5331,10 @@ function create_fragment4(ctx) {
       append(svg1, path1);
       append(button1, t3);
       append(button1, t4);
-      append(div1, t5);
+      append(div0, t5);
+      append(div0, button2);
+      append(button2, t6);
+      append(div1, t7);
       if (if_block)
         if_block.m(div1, null);
       if (!mounted) {
@@ -5313,6 +5350,12 @@ function create_fragment4(ctx) {
             "click",
             /*click_handler_1*/
             ctx[7]
+          ),
+          listen(
+            button2,
+            "click",
+            /*click_handler_2*/
+            ctx[8]
           )
         ];
         mounted = true;
@@ -5345,6 +5388,20 @@ function create_fragment4(ctx) {
           "mt-active",
           /*mode*/
           ctx2[0] === "edit"
+        );
+      }
+      if (dirty & /*mode*/
+      1 && button2_aria_pressed_value !== (button2_aria_pressed_value = /*mode*/
+      ctx2[0] === "hermes")) {
+        attr(button2, "aria-pressed", button2_aria_pressed_value);
+      }
+      if (dirty & /*mode*/
+      1) {
+        toggle_class(
+          button2,
+          "mt-active",
+          /*mode*/
+          ctx2[0] === "hermes"
         );
       }
       if (
@@ -5399,6 +5456,7 @@ function instance4($$self, $$props, $$invalidate) {
   const t = (k) => plugin.i18n.t(k);
   const click_handler = () => setMode("ask");
   const click_handler_1 = () => setMode("edit");
+  const click_handler_2 = () => setMode("hermes");
   $$self.$$set = ($$props2) => {
     if ("plugin" in $$props2)
       $$invalidate(5, plugin = $$props2.plugin);
@@ -5411,7 +5469,8 @@ function instance4($$self, $$props, $$invalidate) {
     t,
     plugin,
     click_handler,
-    click_handler_1
+    click_handler_1,
+    click_handler_2
   ];
 }
 var ModeToggle = class extends SvelteComponent {
@@ -7117,12 +7176,13 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
     this.currentConversation.provider = this.settings.providerId;
     const tools = [];
     this.lastTurnSummary = { created: [], edited: [], deleted: [] };
-    const basePrompt = this.i18n.t(systemPromptKey(this.currentConversation.mode));
+    const promptKey = systemPromptKey(this.currentConversation.mode);
+    const basePrompt = promptKey ? this.i18n.t(promptKey) : "";
     const profileText = this.settings.userProfile?.trim();
-    const systemPrompt = profileText ? `${basePrompt}
+    const systemPrompt = basePrompt ? profileText ? `${basePrompt}
 
 ## About the user
-${profileText}` : basePrompt;
+  ${profileText}` : basePrompt : "";
     const ctxMgr = new ContextManager({
       conversation: this.currentConversation,
       systemPrompt,
