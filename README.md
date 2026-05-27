@@ -162,22 +162,19 @@ Press `Ctrl/Cmd + P` and type "Hermes" to see available commands:
 The chat behaves like a vault-aware agent:
 
 - `Ask` mode can search the vault, read notes, inspect backlinks and outgoing links, and use the active note/selection as context.
-- `Edit` mode can propose note changes and queue them for approval, similar to smart-note-agent.
 - `Hermes` mode skips the Obsidian-specific prompt wrapper so you can talk to Hermes more directly, closer to the Hermes TUI experience.
 - Hermes connectivity is provided through the local CLI, an SSH remote CLI, or the Hermes API server.
 
 ### Chat Interface
 
 1. Press `Ctrl/Cmd + P` and run `Open Hermes Agent`
-2. Pick the mode that matches what you want to do: `Ask`, `Edit`, or `Hermes`
+2. Pick the mode that matches what you want to do: `Ask` or `Hermes`
 3. Ask questions about notes, folders, links, or editing tasks, or use `Hermes` mode for a more direct CLI-style conversation
-4. Review any queued note edits before applying them
-5. Start a new conversation with `New Hermes chat` when needed
+4. Start a new conversation with `New Hermes chat` when needed
 
 ### Chat Modes
 
 - `Ask`: Vault-aware Q&A with Obsidian-oriented prompting.
-- `Edit`: Vault-aware editing mode with queued approval for note changes.
 - `Hermes`: Sends the conversation without the Obsidian-specific system prompt, so Hermes behaves more like the standalone TUI.
 
 ### Timeouts
@@ -216,9 +213,8 @@ If you hit timeouts often:
 
 ### Notes not found
 
-1. Check whether the agent should be in Ask, Edit, or Hermes mode
+1. Check whether the agent should be in Ask or Hermes mode
 2. Use explicit note paths or folder paths when possible
-3. Ask the agent to search the vault first before editing
 
 ## Notes
 

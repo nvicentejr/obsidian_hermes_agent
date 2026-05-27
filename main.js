@@ -5424,18 +5424,6 @@ function create_fragment4(ctx) {
   let t1;
   let button0_aria_pressed_value;
   let t2;
-  let button1;
-  let svg1;
-  let path0;
-  let path1;
-  let t3;
-  let t4_value = (
-    /*t*/
-    ctx[4]("chat.mode.edit") + ""
-  );
-  let t4;
-  let button1_aria_pressed_value;
-  let t5;
   let button2;
   let t6_value = (
     /*t*/
@@ -5444,13 +5432,8 @@ function create_fragment4(ctx) {
   let t6;
   let button2_aria_pressed_value;
   let div0_aria_label_value;
-  let t7;
   let mounted;
   let dispose;
-  let if_block = (
-    /*mode*/
-    ctx[0] === "edit" && create_if_block4(ctx)
-  );
   return {
     c() {
       div1 = element("div");
@@ -5462,15 +5445,8 @@ function create_fragment4(ctx) {
       t0 = space();
       t1 = text(t1_value);
       t2 = space();
-      button1 = element("button");
-      svg1 = svg_element("svg");
-      path0 = svg_element("path");
-      path1 = svg_element("path");
-      t3 = space();
-      t4 = text(t4_value);
-      t5 = space();
-      if (if_block)
-        if_block.c();
+      button2 = element("button");
+      t6 = text(t6_value);
       attr(circle, "cx", "11");
       attr(circle, "cy", "11");
       attr(circle, "r", "8");
@@ -5496,29 +5472,6 @@ function create_fragment4(ctx) {
         /*mode*/
         ctx[0] === "ask"
       );
-      attr(path0, "d", "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7");
-      attr(path1, "d", "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z");
-      attr(svg1, "width", "11");
-      attr(svg1, "height", "11");
-      attr(svg1, "viewBox", "0 0 24 24");
-      attr(svg1, "fill", "none");
-      attr(svg1, "stroke", "currentColor");
-      attr(svg1, "stroke-width", "2");
-      attr(svg1, "stroke-linecap", "round");
-      attr(svg1, "stroke-linejoin", "round");
-      attr(svg1, "aria-hidden", "true");
-      attr(button1, "class", "mt-option svelte-fhtp07");
-      attr(button1, "aria-pressed", button1_aria_pressed_value = /*mode*/
-      ctx[0] === "edit");
-      toggle_class(
-        button1,
-        "mt-active",
-        /*mode*/
-        ctx[0] === "edit"
-      );
-      button2 = element("button");
-      t6 = text(t6_value);
-      t7 = space();
       attr(button2, "class", "mt-option svelte-fhtp07");
       attr(button2, "aria-pressed", button2_aria_pressed_value = /*mode*/
       ctx[0] === "hermes");
@@ -5544,18 +5497,8 @@ function create_fragment4(ctx) {
       append(button0, t0);
       append(button0, t1);
       append(div0, t2);
-      append(div0, button1);
-      append(button1, svg1);
-      append(svg1, path0);
-      append(svg1, path1);
-      append(button1, t3);
-      append(button1, t4);
-      append(div0, t5);
       append(div0, button2);
       append(button2, t6);
-      append(div1, t7);
-      if (if_block)
-        if_block.m(div1, null);
       if (!mounted) {
         dispose = [
           listen(
@@ -5565,16 +5508,10 @@ function create_fragment4(ctx) {
             ctx[6]
           ),
           listen(
-            button1,
-            "click",
-            /*click_handler_1*/
-            ctx[7]
-          ),
-          listen(
             button2,
             "click",
             /*click_handler_2*/
-            ctx[8]
+            ctx[7]
           )
         ];
         mounted = true;
@@ -5596,20 +5533,6 @@ function create_fragment4(ctx) {
         );
       }
       if (dirty & /*mode*/
-      1 && button1_aria_pressed_value !== (button1_aria_pressed_value = /*mode*/
-      ctx2[0] === "edit")) {
-        attr(button1, "aria-pressed", button1_aria_pressed_value);
-      }
-      if (dirty & /*mode*/
-      1) {
-        toggle_class(
-          button1,
-          "mt-active",
-          /*mode*/
-          ctx2[0] === "edit"
-        );
-      }
-      if (dirty & /*mode*/
       1 && button2_aria_pressed_value !== (button2_aria_pressed_value = /*mode*/
       ctx2[0] === "hermes")) {
         attr(button2, "aria-pressed", button2_aria_pressed_value);
@@ -5623,21 +5546,6 @@ function create_fragment4(ctx) {
           ctx2[0] === "hermes"
         );
       }
-      if (
-        /*mode*/
-        ctx2[0] === "edit"
-      ) {
-        if (if_block) {
-          if_block.p(ctx2, dirty);
-        } else {
-          if_block = create_if_block4(ctx2);
-          if_block.c();
-          if_block.m(div1, null);
-        }
-      } else if (if_block) {
-        if_block.d(1);
-        if_block = null;
-      }
     },
     i: noop,
     o: noop,
@@ -5645,8 +5553,6 @@ function create_fragment4(ctx) {
       if (detaching) {
         detach(div1);
       }
-      if (if_block)
-        if_block.d();
       mounted = false;
       run_all(dispose);
     }
@@ -5674,7 +5580,6 @@ function instance4($$self, $$props, $$invalidate) {
   }
   const t = (k) => plugin.i18n.t(k);
   const click_handler = () => setMode("ask");
-  const click_handler_1 = () => setMode("edit");
   const click_handler_2 = () => setMode("hermes");
   $$self.$$set = ($$props2) => {
     if ("plugin" in $$props2)
@@ -5688,7 +5593,6 @@ function instance4($$self, $$props, $$invalidate) {
     t,
     plugin,
     click_handler,
-    click_handler_1,
     click_handler_2
   ];
 }
