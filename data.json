@@ -1,0 +1,46 @@
+{
+  "providerId": "hermes",
+  "providers": {
+    "hermes": {
+      "apiKey": "change-me-local-dev",
+      "baseUrl": "http://localhost:8642/v1",
+      "model": "hermes"
+    }
+  },
+  "connectionMode": "api",
+  "agentName": "Hermes",
+  "hermesCommand": "hermes",
+  "hermesHome": "/Users/nunovicente/.hermes",
+  "sshHost": "HermesObsidian@orb",
+  "sshPort": "22",
+  "sshUser": "nunovicente",
+  "sshHermesCommand": "hermes",
+  "sshHermesHome": "~/.hermes",
+  "mode": "ask",
+  "chatsFolder": "hermes-agent/chats",
+  "locale": "auto",
+  "userProfile": "",
+  "historyRetentionDays": 30,
+  "autoApprove": false,
+  "maxIterations": 25,
+  "turnTimeoutMs": 600000,
+  "historyTokenBudget": 0,
+  "responseReserveTokens": 4096,
+  "autoCompactThreshold": 0.75,
+  "keepLastTurns": 6,
+  "scheduled": {
+    "dailySummary": {
+      "enabled": false,
+      "time": "22:00",
+      "targetFolder": "_agent/summaries/daily"
+    },
+    "weeklyReview": {
+      "enabled": false,
+      "time": "22:00",
+      "targetFolder": "_agent/summaries/weekly",
+      "weekday": 0
+    }
+  },
+  "remoteUrl": "",
+  "remoteApiKey": ""
+}

@@ -6,7 +6,7 @@ Hermes Agent now uses a smart-note-agent style architecture: persistent chat, va
 
 1. Copy the plugin files to your Obsidian plugins directory:
    ```
-   ~/.obsidian/plugins/obsidian-hermes-agent/
+   ~/.obsidian/plugins/hermes-agent/
    ```
 
 2. Enable the plugin in Obsidian:
@@ -156,6 +156,8 @@ Press `Ctrl/Cmd + P` and type "Hermes" to see available commands:
 
 - **Open Hermes Agent** - Open the persistent Hermes chat view
 - **New Hermes chat** - Start a fresh conversation
+- **Attach file to Hermes chat** - Choose any vault file to attach to the next message
+- **Attach active file to Hermes chat** - Attach the current note or vault file to the next message
 
 ### Chat Workflow
 
@@ -169,8 +171,27 @@ The chat behaves like a vault-aware agent:
 
 1. Press `Ctrl/Cmd + P` and run `Open Hermes Agent`
 2. Pick the mode that matches what you want to do: `Ask` or `Hermes`
-3. Ask questions about notes, folders, links, or editing tasks, or use `Hermes` mode for a more direct CLI-style conversation
+3. Attach vault files when needed, then ask questions about notes, folders, links, or editing tasks, or use `Hermes` mode for a more direct CLI-style conversation
 4. Start a new conversation with `New Hermes chat` when needed
+
+### Sending Files to Hermes
+
+Hermes Agent can attach vault files to the next chat message.
+
+- Click the paperclip button in the chat input to choose a vault file.
+- Run `Attach file to Hermes chat` from the command palette to choose any vault file.
+- Run `Attach active file to Hermes chat` from the command palette to attach the current note.
+- Right-click a file in Obsidian and choose `Attach file to Hermes chat`.
+
+Text-based files are embedded into the next Hermes prompt as context.
+
+Images (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.tif`, `.tiff`, `.heic`, `.heif`) are forwarded as real vision inputs when the selected connection supports it:
+
+- Local CLI mode passes image paths to `hermes chat --image`.
+- API Server mode sends OpenAI-compatible `image_url` content blocks.
+- SSH Remote CLI mode includes image metadata and paths only; the remote Hermes process must be able to access the image path to analyze it.
+
+Other non-text files are referenced by vault path and file metadata.
 
 ### Chat Modes
 

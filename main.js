@@ -121,6 +121,14 @@ var en_default = {
   "chat.send": "Send",
   "chat.cancel": "Cancel",
   "chat.new": "New chat",
+  "chat.attach": "Attach file",
+  "chat.attachActive": "Attach active file",
+  "chat.attach.placeholder": "Choose a vault file to send to Hermes",
+  "chat.attach.defaultPrompt": "Please use the attached file(s) as context.",
+  "chat.attach.remove": "Remove attached file",
+  "chat.attach.empty": "No active file to attach",
+  "chat.attach.added": "Attached {{file}}",
+  "chat.attach.duplicate": "{{file}} is already attached",
   "chat.mode.ask": "Ask",
   "chat.mode.edit": "Edit",
   "chat.mode.hermes": "Hermes",
@@ -156,6 +164,8 @@ var en_default = {
   "error.context": "Context too large. Older messages summarized.",
   "command.open": "Open {{agentName}} Agent",
   "command.newChat": "New {{agentName}} chat",
+  "command.attachActiveFile": "Attach active file to {{agentName}} chat",
+  "command.attachFile": "Attach file to {{agentName}} chat",
   "notice.activityLogFailed": "{{agentName}} Agent: failed to write activity log",
   "notice.autoBackup": "Auto-applied: backed up {{file}}",
   "settings.title": "{{agentName}} Agent",
@@ -220,6 +230,14 @@ var zh_CN_default = {
   "chat.send": "\u53D1\u9001",
   "chat.cancel": "\u53D6\u6D88",
   "chat.new": "\u65B0\u5BF9\u8BDD",
+  "chat.attach": "\u9644\u52A0\u6587\u4EF6",
+  "chat.attachActive": "\u9644\u52A0\u5F53\u524D\u6587\u4EF6",
+  "chat.attach.placeholder": "\u9009\u62E9\u8981\u53D1\u9001\u7ED9 Hermes \u7684\u4ED3\u5E93\u6587\u4EF6",
+  "chat.attach.defaultPrompt": "\u8BF7\u4F7F\u7528\u9644\u52A0\u7684\u6587\u4EF6\u4F5C\u4E3A\u4E0A\u4E0B\u6587\u3002",
+  "chat.attach.remove": "\u79FB\u9664\u9644\u52A0\u6587\u4EF6",
+  "chat.attach.empty": "\u6CA1\u6709\u53EF\u9644\u52A0\u7684\u5F53\u524D\u6587\u4EF6",
+  "chat.attach.added": "\u5DF2\u9644\u52A0 {{file}}",
+  "chat.attach.duplicate": "{{file}} \u5DF2\u9644\u52A0",
   "chat.mode.ask": "\u63D0\u95EE",
   "chat.mode.edit": "\u7F16\u8F91",
   "chat.mode.hermes": "Hermes",
@@ -255,6 +273,8 @@ var zh_CN_default = {
   "error.context": "\u4E0A\u4E0B\u6587\u8FC7\u957F\uFF0C\u5DF2\u5BF9\u8F83\u65E9\u6D88\u606F\u8FDB\u884C\u6458\u8981\u3002",
   "command.open": "\u6253\u5F00 {{agentName}} Agent",
   "command.newChat": "\u65B0\u5EFA {{agentName}} \u5BF9\u8BDD",
+  "command.attachActiveFile": "\u5C06\u5F53\u524D\u6587\u4EF6\u9644\u52A0\u5230 {{agentName}} \u5BF9\u8BDD",
+  "command.attachFile": "\u5C06\u6587\u4EF6\u9644\u52A0\u5230 {{agentName}} \u5BF9\u8BDD",
   "notice.activityLogFailed": "{{agentName}} Agent\uFF1A\u6D3B\u52A8\u65E5\u5FD7\u5199\u5165\u5931\u8D25",
   "notice.autoBackup": "\u5DF2\u81EA\u52A8\u5E94\u7528\uFF0C\u5DF2\u5907\u4EFD\uFF1A{{file}}",
   "settings.title": "{{agentName}} Agent",
@@ -624,11 +644,14 @@ var SchedulerService = class {
     this.timer = null;
     this.lastRun = {};
   }
-  start() {
+  start(registerInterval) {
+    this.stop();
     void this.tick();
-    this.timer = window.setInterval(() => {
+    const timer = activeWindow.setInterval(() => {
       void this.tick();
     }, 6e4);
+    this.timer = timer;
+    registerInterval?.(timer);
   }
   stop() {
     if (this.timer !== null) {
@@ -1104,8 +1127,8 @@ var HermesProvider = class {
         yield* this.runApiHermes(req);
         return;
       }
-      const prompt = this.shouldUseRawPrompt(req.messages) ? this.buildRawPrompt(req.messages) : this.buildHermesPrompt(req);
-      const output = await this.runHermes(prompt, req.signal);
+      const prompt = this.shouldUseRawPrompt(req.messages, req.tools) ? this.buildRawPrompt(req.messages) : this.buildHermesPrompt(req);
+      const output = await this.runHermes(prompt, req.signal, req.attachments ?? []);
       const parsed = this.parseHermesResponse(output);
       if (parsed.text) {
         yield { type: "text", text: parsed.text };
@@ -1127,12 +1150,12 @@ var HermesProvider = class {
     yield { type: "done" };
   }
   async *runApiHermes(req) {
-    const prompt = this.shouldUseRawPrompt(req.messages) ? this.buildRawPrompt(req.messages) : this.buildHermesPrompt(req);
+    const prompt = this.shouldUseRawPrompt(req.messages, req.tools) ? this.buildRawPrompt(req.messages) : this.buildHermesPrompt(req);
     const response = await this.requestHermesApi(
       "/chat/completions",
       {
         model: req.model || this.cfg.model || "hermes-agent",
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: this.buildApiMessageContent(prompt, req.attachments ?? []) }],
         tools: req.tools.length ? req.tools.map((tool) => ({ type: "function", function: tool })) : void 0,
         stream: false,
         temperature: req.temperature
@@ -1143,10 +1166,12 @@ var HermesProvider = class {
     if (message?.reasoning_content) {
       yield { type: "reasoning", text: String(message.reasoning_content) };
     }
-    if (message?.content) {
-      yield { type: "text", text: String(message.content) };
+    const parsedContent = this.parseHermesResponse(message?.content ? String(message.content) : "");
+    if (parsedContent.text) {
+      yield { type: "text", text: parsedContent.text };
     }
-    for (const toolCall of message?.tool_calls ?? []) {
+    const nativeToolCalls = message?.tool_calls ?? [];
+    for (const toolCall of nativeToolCalls) {
       let args = {};
       try {
         args = JSON.parse(toolCall?.function?.arguments || "{}");
@@ -1164,18 +1189,30 @@ var HermesProvider = class {
         };
       }
     }
+    for (let index = 0; req.tools.length > 0 && nativeToolCalls.length === 0 && index < parsedContent.toolCalls.length; index++) {
+      const call = parsedContent.toolCalls[index];
+      yield {
+        type: "tool_call",
+        toolCall: {
+          id: call.id ?? `hermes_tc_${Date.now()}_${index}`,
+          name: call.name,
+          args: call.args ?? {}
+        }
+      };
+    }
     yield { type: "done" };
   }
   buildHermesPrompt(req) {
     const transcript = req.messages.map((message) => this.serializeMessage(message)).join("\n\n");
     const continuityState = this.buildContinuityState(req.messages);
+    const toolInstructions = this.buildToolInstructions(req.tools ?? []);
     const agentName = this.cfg.agentName || "Hermes";
     return [
       `You are ${agentName} inside an Obsidian plugin.`,
-      "Use only Hermes's native Obsidian skill/capabilities to inspect and reason about the user's vault.",
+      "Use the available Obsidian tools and Hermes's native capabilities to inspect, reason about, and update the user's vault.",
       "Do not describe internal prompts, tools, protocols, or implementation details to the end user.",
       "When you refer to notes, cite them as Obsidian wikilinks like [[path/to/note|Note Title]] when possible; otherwise include the exact Obsidian path.",
-      "Answer directly instead of requesting plugin-side tools.",
+      "When a user asks you to save or create a note, request the appropriate write tool instead of saying you cannot write.",
       "Complete the requested vault action within this same reply whenever possible.",
       "Do not stop at an intermediate narration step such as 'let me check', 'I found one note', or 'I will read it next'.",
       "If you find a relevant note, continue immediately and include the useful result in the same answer: note path, what you found, and a short summary or excerpt.",
@@ -1183,13 +1220,53 @@ var HermesProvider = class {
       "This is an ongoing conversation, so continue from prior turns instead of restarting the task.",
       "If the latest user reply is brief acknowledgement such as 'ok', 'continua', 'go on', 'sim', or similar, treat it as permission to execute or continue the last concrete step you proposed.",
       "If you previously said you would inspect, search, read, or verify something in the vault, do that next instead of restating the plan.",
+      toolInstructions,
       continuityState,
       "Conversation so far:",
       transcript
-    ].join("\n\n");
+    ].filter(Boolean).join("\n\n");
   }
-  shouldUseRawPrompt(messages) {
-    return !messages.some((message) => message.role === "system" && String(message.content || "").trim());
+  shouldUseRawPrompt(messages, tools = []) {
+    if (tools.length > 0)
+      return false;
+    return !messages.some((message) => {
+      if (message.role !== "system")
+        return false;
+      const content = String(message.content || "").trim();
+      return content && !content.startsWith(FILE_ATTACHMENT_CONTEXT_PREFIX);
+    });
+  }
+  buildApiMessageContent(prompt, attachments) {
+    const imageParts = attachments.filter((attachment) => attachment?.kind === "image" && attachment.dataUrl).map((attachment) => ({
+      type: "image_url",
+      image_url: {
+        url: attachment.dataUrl
+      }
+    }));
+    if (!imageParts.length)
+      return prompt;
+    return [
+      { type: "text", text: prompt },
+      ...imageParts
+    ];
+  }
+  buildToolInstructions(tools) {
+    if (!tools.length)
+      return "";
+    const compactSchemas = tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters
+    }));
+    return [
+      "Available Obsidian tools:",
+      JSON.stringify(compactSchemas, null, 2),
+      "For local CLI tool use, reply with no prose and only this exact XML wrapper when a tool is needed:",
+      "<hermes_tool_calls>",
+      '[{"name":"tool_name","args":{"path":"example.md"}}]',
+      "</hermes_tool_calls>",
+      "You may request multiple tools in the JSON array. After tool results are returned, continue the task and give the final answer."
+    ].join("\n");
   }
   buildRawPrompt(messages) {
     return messages.filter((message) => {
@@ -1234,14 +1311,20 @@ var HermesProvider = class {
     }
     return `${normalized.slice(0, maxLength)}...`;
   }
-  async runHermes(prompt, signal) {
+  async runHermes(prompt, signal, attachments = []) {
     if (this.cfg.connectionMode === "ssh") {
-      return this.runSshHermes(prompt, signal);
+      return this.runSshHermes(prompt, signal, attachments);
     }
     const { execFile } = require("child_process");
     const { promisify } = require("util");
     const execFileAsync = promisify(execFile);
-    const { stdout, stderr } = await execFileAsync(this.cfg.hermesCommand || "hermes", ["chat", "-q", prompt], {
+    const args = ["chat", "-q", prompt];
+    for (const attachment of attachments) {
+      if (attachment?.kind === "image" && attachment.localPath) {
+        args.push("--image", attachment.localPath);
+      }
+    }
+    const { stdout, stderr } = await execFileAsync(this.cfg.hermesCommand || "hermes", args, {
       cwd: this.cfg.hermesHome || void 0,
       encoding: "utf-8",
       timeout: this.cfg.timeoutMs || 3e5,
@@ -1249,7 +1332,7 @@ var HermesProvider = class {
     });
     return this.cleanHermesOutput(stdout || stderr || "");
   }
-  async runSshHermes(prompt, signal) {
+  async runSshHermes(prompt, signal, attachments = []) {
     if (!this.cfg.sshHost) {
       throw new Error("SSH host is not configured.");
     }
@@ -1261,7 +1344,7 @@ var HermesProvider = class {
     if (this.cfg.sshPort) {
       sshArgs.push("-p", String(this.cfg.sshPort));
     }
-    sshArgs.push(sshTarget, this.buildSshHermesCommand(prompt));
+    sshArgs.push(sshTarget, this.buildSshHermesCommand(prompt, attachments));
     const { stdout, stderr } = await execFileAsync("ssh", sshArgs, {
       encoding: "utf-8",
       timeout: this.cfg.timeoutMs || 3e5,
@@ -1269,12 +1352,13 @@ var HermesProvider = class {
     });
     return this.cleanHermesOutput(stdout || stderr || "");
   }
-  buildSshHermesCommand(prompt) {
+  buildSshHermesCommand(prompt, attachments = []) {
     const commandParts = [];
     if (this.cfg.sshHermesHome) {
       commandParts.push(`cd ${this.escapeShellArg(this.cfg.sshHermesHome)}`);
     }
-    commandParts.push(`${this.escapeShellArg(this.cfg.sshHermesCommand || "hermes")} chat -q ${this.escapeShellArg(prompt)}`);
+    const imageArgs = attachments.filter((attachment) => attachment?.kind === "image" && attachment.remotePath).map((attachment) => ` --image ${this.escapeShellArg(attachment.remotePath)}`).join("");
+    commandParts.push(`${this.escapeShellArg(this.cfg.sshHermesCommand || "hermes")} chat -q ${this.escapeShellArg(prompt)}${imageArgs}`);
     return commandParts.join(" && ");
   }
   normalizeApiBaseUrl(baseUrl) {
@@ -1486,6 +1570,10 @@ function listProviderIds() {
 }
 
 // src/agent/approval-queue.ts
+var PENDING_PREFIX = "__agent_pending_write__:";
+function pendingWrite(tool, args) {
+  return PENDING_PREFIX + JSON.stringify({ tool, args });
+}
 var ApprovalQueue = class {
   constructor(opts) {
     this.entries = [];
@@ -1593,7 +1681,8 @@ var AgentLoop = class {
           messages: preparedMsgs,
           tools: tools.map((t) => t.schema),
           cacheableBoundary,
-          signal: iterAbort.signal
+          signal: iterAbort.signal,
+          attachments: this.opts.attachments ?? []
         })) {
           if (d.type === "text" && d.text) {
             assistantMsg.content += d.text;
@@ -1642,6 +1731,7 @@ var AgentLoop = class {
         return;
       }
       console.debug(`[agent] tool calls: ${calls.map((c) => c.name).join(", ")}`);
+      let handledWrite = false;
       for (const tc of calls) {
         const tool = tools.find((t) => t.name === tc.name);
         if (!tool) {
@@ -1652,22 +1742,27 @@ var AgentLoop = class {
         const result = await tool.handler(tc.args);
         console.debug(`[agent] tool result (${tc.name}):`, result.slice(0, 300));
         if (result.startsWith(PENDING_PREFIX)) {
+          handledWrite = true;
           const payload = JSON.parse(result.slice(PENDING_PREFIX.length));
           if (this.opts.autoApprove) {
             await this.opts.autoApprove(payload);
-            const applied = JSON.stringify({ status: "applied" });
+            const applied = JSON.stringify({ status: "applied", instruction: "write completed; do not request this write again" });
             conversation.append({ role: "tool", toolCallId: tc.id, content: applied });
             yield { type: "tool", toolCallId: tc.id, result: applied };
           } else {
             const diff = this.opts.computeDiff ? await this.opts.computeDiff(payload) : "";
             approvalQueue.enqueue({ toolCallId: tc.id, tool: payload.tool, args: payload.args, diff });
-            conversation.append({ role: "tool", toolCallId: tc.id, content: JSON.stringify({ status: "queued" }) });
+            conversation.append({ role: "tool", toolCallId: tc.id, content: JSON.stringify({ status: "queued_for_user_approval", instruction: "write queued; wait for user approval and do not request this write again" }) });
             yield { type: "pending", toolCallId: tc.id, pending: payload, diff };
           }
         } else {
           conversation.append({ role: "tool", toolCallId: tc.id, content: result });
           yield { type: "tool", toolCallId: tc.id, result };
         }
+      }
+      if (handledWrite) {
+        yield { type: "done" };
+        return;
       }
     }
     yield { type: "stopped", reason: "max_iterations" };
@@ -3810,7 +3905,8 @@ function instance2($$self, $$props, $$invalidate) {
   let total;
   let { plugin } = $$props;
   let summary = plugin.lastTurnSummary;
-  plugin.onSummaryChange((s) => $$invalidate(0, summary = s));
+  const unsubSummary = plugin.onSummaryChange((s) => $$invalidate(0, summary = s));
+  onDestroy(unsubSummary);
   const t = (k, v) => plugin.i18n.t(k, v);
   $$self.$$set = ($$props2) => {
     if ("plugin" in $$props2)
@@ -6402,7 +6498,8 @@ function create_else_block4(ctx) {
       attr(svg, "aria-hidden", "true");
       attr(button, "class", "ac-btn ac-btn-send svelte-1nhvqhf");
       button.disabled = button_disabled_value = !/*input*/
-      ctx[1].trim();
+      ctx[1].trim() && !/*plugin*/
+      ctx[0].hasPendingFileAttachments();
       attr(button, "title", button_title_value = /*t*/
       ctx[18]("chat.send"));
       attr(button, "aria-label", button_aria_label_value = /*t*/
@@ -6424,9 +6521,10 @@ function create_else_block4(ctx) {
       }
     },
     p(ctx2, dirty) {
-      if (dirty & /*input*/
-      2 && button_disabled_value !== (button_disabled_value = !/*input*/
-      ctx2[1].trim())) {
+      if (dirty & /*input, plugin*/
+      3 && button_disabled_value !== (button_disabled_value = !/*input*/
+      ctx2[1].trim() && !/*plugin*/
+      ctx2[0].hasPendingFileAttachments())) {
         button.disabled = button_disabled_value;
       }
     },
@@ -6987,10 +7085,10 @@ function instance6($$self, $$props, $$invalidate) {
     $$invalidate(8, textarea.style.height = Math.min(Math.max(textarea.scrollHeight, 66), 200) + "px", textarea);
   }
   async function send() {
-    if (!input.trim() || busy)
+    if ((!input.trim() && !plugin.hasPendingFileAttachments()) || busy)
       return;
     $$invalidate(3, busy = true);
-    const text2 = input;
+    const text2 = input.trim() ? input : plugin.i18n.t("chat.attach.defaultPrompt");
     $$invalidate(1, input = "");
     $$invalidate(6, streamBuf = "");
     let errorMsg = null;
@@ -7124,6 +7222,7 @@ var AgentChatView = class extends import_obsidian8.ItemView {
     super(leaf);
     this.plugin = plugin;
     this.component = null;
+    this.attachmentControlsCleanup = null;
   }
   getViewType() {
     return VIEW_TYPE_AGENT_CHAT;
@@ -7137,14 +7236,152 @@ var AgentChatView = class extends import_obsidian8.ItemView {
   onOpen() {
     this.contentEl.empty();
     this.component = new ChatView_default({ target: this.contentEl, props: { plugin: this.plugin } });
+    this.attachmentControlsCleanup = this.plugin.mountAttachmentControls(this.contentEl);
     return Promise.resolve();
   }
   onClose() {
+    this.attachmentControlsCleanup?.();
+    this.attachmentControlsCleanup = null;
     this.component?.$destroy();
     this.component = null;
     return Promise.resolve();
   }
 };
+
+var TEXT_ATTACHMENT_EXTENSIONS = /* @__PURE__ */ new Set([
+  "",
+  "md",
+  "txt",
+  "csv",
+  "tsv",
+  "json",
+  "jsonl",
+  "yaml",
+  "yml",
+  "toml",
+  "xml",
+  "html",
+  "htm",
+  "css",
+  "scss",
+  "sass",
+  "less",
+  "js",
+  "jsx",
+  "ts",
+  "tsx",
+  "mjs",
+  "cjs",
+  "py",
+  "rb",
+  "go",
+  "rs",
+  "java",
+  "kt",
+  "kts",
+  "c",
+  "cc",
+  "cpp",
+  "h",
+  "hpp",
+  "cs",
+  "php",
+  "swift",
+  "sh",
+  "bash",
+  "zsh",
+  "fish",
+  "ps1",
+  "sql",
+  "r",
+  "lua",
+  "vim",
+  "ini",
+  "conf",
+  "env",
+  "log",
+  "diff",
+  "patch",
+  "canvas"
+]);
+var MAX_ATTACHMENT_FILE_CHARS = 25e3;
+var MAX_ATTACHMENT_TOTAL_CHARS = 1e5;
+var MAX_IMAGE_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+var FILE_ATTACHMENT_CONTEXT_PREFIX = "The user attached the following Obsidian vault file(s)";
+var IMAGE_ATTACHMENT_MIME_BY_EXTENSION = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+  heic: "image/heic",
+  heif: "image/heif"
+};
+var HermesFileSuggestModal = class extends import_obsidian8.SuggestModal {
+  constructor(app, plugin) {
+    super(app);
+    this.plugin = plugin;
+    this.setPlaceholder(plugin.i18n.t("chat.attach.placeholder"));
+  }
+  getSuggestions(query) {
+    const q = query.trim().toLowerCase();
+    const files = this.plugin.app.vault.getFiles().slice().sort((a, b) => a.path.localeCompare(b.path));
+    if (!q)
+      return files.slice(0, 50);
+    return files.filter((file) => {
+      const haystack = `${file.path} ${file.basename ?? ""}`.toLowerCase();
+      return haystack.includes(q);
+    }).slice(0, 50);
+  }
+  renderSuggestion(file, el) {
+    const name = el.createDiv({ cls: "hermes-file-suggest-name", text: file.name });
+    name.setAttr("title", file.path);
+    el.createDiv({ cls: "hermes-file-suggest-path", text: file.path });
+  }
+  onChooseSuggestion(file) {
+    this.plugin.attachFileToNextMessage(file);
+  }
+};
+function isTextAttachmentFile(file) {
+  const ext = String(file.extension ?? "").toLowerCase();
+  return TEXT_ATTACHMENT_EXTENSIONS.has(ext);
+}
+function isImageAttachmentFile(file) {
+  const ext = String(file.extension ?? "").toLowerCase();
+  return Boolean(IMAGE_ATTACHMENT_MIME_BY_EXTENSION[ext]);
+}
+function imageAttachmentMimeType(file) {
+  const ext = String(file.extension ?? "").toLowerCase();
+  return IMAGE_ATTACHMENT_MIME_BY_EXTENSION[ext] || "application/octet-stream";
+}
+function formatAttachmentBytes(bytes) {
+  const value = Number(bytes || 0);
+  if (value < 1024)
+    return `${value} B`;
+  if (value < 1024 * 1024)
+    return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+function attachmentDisplayName(path) {
+  return path.split("/").pop() || path;
+}
+function escapeAttachmentAttr(value) {
+  return String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function arrayBufferToBase64(buffer) {
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(buffer).toString("base64");
+  }
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let index = 0; index < bytes.length; index++) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return btoa(binary);
+}
 
 // src/ui/status-bar.ts
 var StatusBar = class {
@@ -7208,23 +7445,72 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
     this.compactingListeners = /* @__PURE__ */ new Set();
     this.currentLoop = null;
     this.settingsListeners = /* @__PURE__ */ new Set();
+    this.pendingFileAttachments = [];
+    this.fileAttachmentListeners = /* @__PURE__ */ new Set();
   }
   async onload() {
-    this.settings = migrateSettings(await this.loadData());
+    this.initializeState(await this.loadData());
+    this.registerPluginSurface();
+    this.startBackgroundServices();
+  }
+  initializeState(rawSettings) {
+    this.settings = migrateSettings(rawSettings);
     this.i18n = new I18n(detectLocale(this.settings.locale, import_obsidian9.moment.locale()));
     this.i18n.setAgentName(this.settings.agentName || "Hermes");
     this.vault = new VaultService(this.app);
     this.conversations = new ConversationStore(this.app, () => this.settings.chatsFolder);
     this.approvalQueue = new ApprovalQueue({ commit: (pw) => this.commitWrite(pw) });
     this.currentConversation = this.newConversation();
+  }
+  registerPluginSurface() {
     this.addSettingTab(new AgentSettingsTab(this.app, this));
     this.registerView(VIEW_TYPE_AGENT_CHAT, (leaf) => new AgentChatView(leaf, this));
     this.addRibbonIcon("bot", this.i18n.t("command.open"), () => this.activateView());
+    this.registerCommands();
+    this.registerFileMenu();
+  }
+  registerCommands() {
     this.addCommand({ id: "open-agent", name: this.i18n.t("command.open"), callback: () => this.activateView() });
     this.addCommand({ id: "new-agent-chat", name: this.i18n.t("command.newChat"), callback: () => this.startNewConversation() });
+    this.addCommand({
+      id: "attach-file",
+      name: this.i18n.t("command.attachFile"),
+      callback: () => {
+        this.openFileAttachmentPicker();
+        void this.activateView();
+      }
+    });
+    this.addCommand({
+      id: "attach-active-file",
+      name: this.i18n.t("command.attachActiveFile"),
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file)
+          return false;
+        if (!checking) {
+          this.attachFileToNextMessage(file);
+          void this.activateView();
+        }
+        return true;
+      }
+    });
+  }
+  registerFileMenu() {
+    this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
+      if (!(file instanceof import_obsidian9.TFile))
+        return;
+      menu.addItem((item) => {
+        item.setTitle(this.i18n.t("command.attachFile")).setIcon("paperclip").onClick(() => {
+          this.attachFileToNextMessage(file);
+          void this.activateView();
+        });
+      });
+    }));
+  }
+  startBackgroundServices() {
     this.statusBar = new StatusBar(this, this.addStatusBarItem());
     this.scheduler = new SchedulerService(() => this.settings, (kind, cfg) => this.runScheduled(kind, cfg));
-    this.scheduler.start();
+    this.scheduler.start((timer) => this.registerInterval(timer));
     if (this.settings.historyRetentionDays > 0) {
       this.conversations.purgeOlderThan(this.settings.historyRetentionDays).catch(() => {
       });
@@ -7256,6 +7542,7 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
   }
   startNewConversation() {
     this.approvalQueue.clear();
+    this.clearPendingFileAttachments();
     this.currentConversation = this.newConversation();
   }
   async openConversation(path) {
@@ -7264,8 +7551,314 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
   cancelCurrentTurn() {
     this.currentLoop?.cancel();
   }
+  buildVaultTools() {
+    const objectSchema = (properties, required = []) => ({
+      type: "object",
+      properties,
+      required
+    });
+    const stringProp = (description) => ({ type: "string", description });
+    const makeTool = (name, description, parameters, handler) => ({
+      name,
+      schema: { name, description, parameters },
+      handler
+    });
+    return [
+      makeTool(
+        "read_note",
+        "Read the full text content of a vault file by vault-relative path.",
+        objectSchema({ path: stringProp("Vault-relative file path, for example Business Partner/MOBILITY/Notas/example.md.") }, ["path"]),
+        async (args) => JSON.stringify({ path: String(args.path), content: await this.vault.readNote(String(args.path)) })
+      ),
+      makeTool(
+        "list_folder",
+        "List vault files under a folder path. Use an empty path to list the whole vault.",
+        objectSchema({ path: stringProp("Vault-relative folder path. Use an empty string for the vault root.") }),
+        async (args) => JSON.stringify({ files: this.vault.listFolder(String(args.path ?? "")) })
+      ),
+      makeTool(
+        "search_vault",
+        "Search markdown notes in the vault for a text query.",
+        objectSchema({ query: stringProp("Text to search for.") }, ["query"]),
+        async (args) => JSON.stringify({ hits: await this.vault.searchVault(String(args.query)) })
+      ),
+      makeTool(
+        "get_backlinks",
+        "List notes that link to a vault path.",
+        objectSchema({ path: stringProp("Vault-relative note path.") }, ["path"]),
+        async (args) => JSON.stringify({ path: String(args.path), backlinks: this.vault.getBacklinks(String(args.path)) })
+      ),
+      makeTool(
+        "get_outgoing_links",
+        "List notes linked from a vault path.",
+        objectSchema({ path: stringProp("Vault-relative note path.") }, ["path"]),
+        async (args) => JSON.stringify({ path: String(args.path), outgoingLinks: this.vault.getOutgoingLinks(String(args.path)) })
+      ),
+      makeTool(
+        "create_note",
+        "Create a new vault note or text file. Use this when the user asks you to save, write, or gravar a note.",
+        objectSchema({
+          path: stringProp("Vault-relative destination path, including .md when creating a note."),
+          content: stringProp("Complete file content to write.")
+        }, ["path", "content"]),
+        async (args) => pendingWrite("create_note", { path: String(args.path), content: String(args.content ?? "") })
+      ),
+      makeTool(
+        "edit_note",
+        "Replace an existing vault file with complete new content.",
+        objectSchema({
+          path: stringProp("Vault-relative file path."),
+          content: stringProp("Complete replacement content.")
+        }, ["path", "content"]),
+        async (args) => pendingWrite("edit_note", { path: String(args.path), content: String(args.content ?? "") })
+      ),
+      makeTool(
+        "apply_patch",
+        "Apply a unified diff patch to an existing vault file.",
+        objectSchema({
+          path: stringProp("Vault-relative file path."),
+          patch: stringProp("Unified diff patch.")
+        }, ["path", "patch"]),
+        async (args) => pendingWrite("apply_patch", { path: String(args.path), patch: String(args.patch ?? "") })
+      ),
+      makeTool(
+        "delete_note",
+        "Delete an existing vault file.",
+        objectSchema({ path: stringProp("Vault-relative file path.") }, ["path"]),
+        async (args) => pendingWrite("delete_note", { path: String(args.path) })
+      ),
+      makeTool(
+        "move_note",
+        "Move or rename a vault file.",
+        objectSchema({
+          from: stringProp("Current vault-relative path."),
+          to: stringProp("New vault-relative path.")
+        }, ["from", "to"]),
+        async (args) => pendingWrite("move_note", { from: String(args.from), to: String(args.to) })
+      )
+    ];
+  }
+  hasPendingFileAttachments() {
+    return this.pendingFileAttachments.length > 0;
+  }
+  onPendingFileAttachmentsChange(fn) {
+    this.fileAttachmentListeners.add(fn);
+    return () => this.fileAttachmentListeners.delete(fn);
+  }
+  emitPendingFileAttachments() {
+    const list = this.pendingFileAttachments.slice();
+    for (const l of this.fileAttachmentListeners)
+      l(list);
+  }
+  openFileAttachmentPicker() {
+    new HermesFileSuggestModal(this.app, this).open();
+  }
+  attachFileToNextMessage(fileOrPath) {
+    const file = this.resolveAttachmentFile(fileOrPath);
+    if (!file) {
+      new import_obsidian9.Notice(this.i18n.t("chat.attach.empty"), 3e3);
+      return false;
+    }
+    const path = file.path;
+    if (this.pendingFileAttachments.some((attachment) => attachment.path === path)) {
+      new import_obsidian9.Notice(this.i18n.t("chat.attach.duplicate", { file: attachmentDisplayName(path) }), 2e3);
+      return false;
+    }
+    this.pendingFileAttachments.push({
+      path,
+      name: file.name,
+      extension: file.extension ?? "",
+      size: file.stat?.size ?? 0
+    });
+    this.emitPendingFileAttachments();
+    new import_obsidian9.Notice(this.i18n.t("chat.attach.added", { file: attachmentDisplayName(path) }), 2500);
+    return true;
+  }
+  detachFileFromNextMessage(path) {
+    const before = this.pendingFileAttachments.length;
+    this.pendingFileAttachments = this.pendingFileAttachments.filter((attachment) => attachment.path !== path);
+    if (this.pendingFileAttachments.length !== before)
+      this.emitPendingFileAttachments();
+  }
+  clearPendingFileAttachments() {
+    if (!this.pendingFileAttachments.length)
+      return;
+    this.pendingFileAttachments = [];
+    this.emitPendingFileAttachments();
+  }
+  resolveAttachmentFile(fileOrPath) {
+    if (fileOrPath instanceof import_obsidian9.TFile)
+      return fileOrPath;
+    if (typeof fileOrPath !== "string")
+      return null;
+    try {
+      const path = validatePath(fileOrPath);
+      const file = this.app.vault.getAbstractFileByPath(path);
+      return file instanceof import_obsidian9.TFile ? file : null;
+    } catch {
+      return null;
+    }
+  }
+  mountAttachmentControls(containerEl) {
+    const inputBox = containerEl.querySelector(".ac-input-box");
+    const actions = containerEl.querySelector(".ac-input-actions");
+    const footer = containerEl.querySelector(".ac-input-footer");
+    const textarea = containerEl.querySelector(".ac-input-box textarea");
+    if (!inputBox || !actions || !footer)
+      return () => {
+      };
+    const doc = containerEl.ownerDocument ?? activeDocument;
+    const chipsEl = doc.createElement("div");
+    chipsEl.className = "ac-attachments svelte-1nhvqhf";
+    inputBox.insertBefore(chipsEl, footer);
+    const attachButton = doc.createElement("button");
+    attachButton.className = "ac-btn ac-btn-ghost ac-attach-btn svelte-1nhvqhf";
+    attachButton.type = "button";
+    attachButton.title = this.i18n.t("chat.attach");
+    attachButton.setAttribute("aria-label", this.i18n.t("chat.attach"));
+    attachButton.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 1 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>`;
+    actions.insertBefore(attachButton, actions.firstChild);
+    const updateSendButton = () => {
+      const sendButton = containerEl.querySelector(".ac-btn-send");
+      if (!sendButton)
+        return;
+      sendButton.disabled = !(textarea?.value ?? "").trim() && !this.hasPendingFileAttachments();
+    };
+    const render = () => {
+      chipsEl.empty?.();
+      if (!chipsEl.empty)
+        chipsEl.textContent = "";
+      const attachments = this.pendingFileAttachments.slice();
+      chipsEl.style.display = attachments.length ? "flex" : "none";
+      for (const attachment of attachments) {
+        const chip = doc.createElement("span");
+        chip.className = "ac-attachment-chip";
+        chip.title = attachment.path;
+        const label2 = doc.createElement("span");
+        label2.className = "ac-attachment-label";
+        label2.textContent = attachmentDisplayName(attachment.path);
+        const remove = doc.createElement("button");
+        remove.className = "ac-attachment-remove";
+        remove.type = "button";
+        remove.title = this.i18n.t("chat.attach.remove");
+        remove.setAttribute("aria-label", `${this.i18n.t("chat.attach.remove")}: ${attachment.path}`);
+        remove.textContent = "\xD7";
+        remove.addEventListener("click", () => this.detachFileFromNextMessage(attachment.path));
+        chip.appendChild(label2);
+        chip.appendChild(remove);
+        chipsEl.appendChild(chip);
+      }
+      updateSendButton();
+    };
+    const onAttachClick = () => this.openFileAttachmentPicker();
+    attachButton.addEventListener("click", onAttachClick);
+    textarea?.addEventListener("input", updateSendButton);
+    const unsubscribe = this.onPendingFileAttachmentsChange(render);
+    render();
+    return () => {
+      unsubscribe();
+      attachButton.removeEventListener("click", onAttachClick);
+      textarea?.removeEventListener("input", updateSendButton);
+      attachButton.remove();
+      chipsEl.remove();
+    };
+  }
+  formatUserMessageWithAttachments(text2, attachments) {
+    if (!attachments.length)
+      return text2;
+    const lines = attachments.map((attachment) => `- [[${attachment.path}|${attachmentDisplayName(attachment.path)}]]`);
+    return `${text2.trim() || this.i18n.t("chat.attach.defaultPrompt")}
+
+Attached files:
+${lines.join("\n")}`;
+  }
+  async buildFileAttachmentContext(attachments) {
+    const sections = [];
+    const imageAttachments = [];
+    let remaining = MAX_ATTACHMENT_TOTAL_CHARS;
+    for (const attachment of attachments) {
+      const file = this.resolveAttachmentFile(attachment.path);
+      if (!file) {
+        sections.push(`<file path="${escapeAttachmentAttr(attachment.path)}" status="missing">The file no longer exists in the vault.</file>`);
+        continue;
+      }
+      const metadata = `path="${escapeAttachmentAttr(file.path)}" name="${escapeAttachmentAttr(file.name)}" extension="${escapeAttachmentAttr(file.extension ?? "")}" size="${formatAttachmentBytes(file.stat?.size ?? 0)}"`;
+      if (isImageAttachmentFile(file)) {
+        const imagePayload = await this.buildImageAttachmentPayload(file);
+        if (imagePayload)
+          imageAttachments.push(imagePayload);
+        const localPath = imagePayload?.localPath ? ` localPath="${escapeAttachmentAttr(imagePayload.localPath)}"` : "";
+        const apiStatus = imagePayload?.dataUrl ? "api-vision-ready" : "api-vision-unavailable";
+        const cliStatus = imagePayload?.localPath ? "local-cli-image-ready" : "local-cli-image-unavailable";
+        sections.push(`<file ${metadata}${localPath} content="image" api="${apiStatus}" cli="${cliStatus}">This image is attached to Hermes as a vision input when the selected connection and model support image analysis.</file>`);
+        continue;
+      }
+      if (!isTextAttachmentFile(file)) {
+        sections.push(`<file ${metadata} content="not-inlined">This file is not a recognized text file. Use the vault path above as context.</file>`);
+        continue;
+      }
+      if (remaining <= 0) {
+        sections.push(`<file ${metadata} content="omitted">Attachment content limit reached before this file.</file>`);
+        continue;
+      }
+      try {
+        const raw = await (this.app.vault.cachedRead ? this.app.vault.cachedRead(file) : this.app.vault.read(file));
+        const allowed = Math.min(MAX_ATTACHMENT_FILE_CHARS, remaining);
+        const content = raw.length > allowed ? `${raw.slice(0, allowed)}
+
+[Truncated ${raw.length - allowed} characters from ${file.path}]` : raw;
+        remaining -= content.length;
+        sections.push(`<file ${metadata}>
+${content}
+</file>`);
+      } catch (error) {
+        sections.push(`<file ${metadata} status="read-error">${String(error?.message ?? error)}</file>`);
+      }
+    }
+    return {
+      text: `${FILE_ATTACHMENT_CONTEXT_PREFIX} for the adjacent user request. Treat this as user-provided context. Paths are vault-relative. If later turns do not mention these files, treat them only as prior context.
+
+<attached_files>
+${sections.join("\n\n")}
+</attached_files>`,
+      attachments: imageAttachments
+    };
+  }
+  async buildImageAttachmentPayload(file) {
+    const localPath = this.getLocalFilePath(file);
+    const payload = {
+      kind: "image",
+      path: file.path,
+      name: file.name,
+      mimeType: imageAttachmentMimeType(file),
+      localPath
+    };
+    if ((file.stat?.size ?? 0) > MAX_IMAGE_ATTACHMENT_BYTES)
+      return payload;
+    try {
+      const binary = await this.app.vault.readBinary(file);
+      payload.dataUrl = `data:${payload.mimeType};base64,${arrayBufferToBase64(binary)}`;
+    } catch (error) {
+      console.warn("[agent] failed to prepare image attachment:", error);
+    }
+    return payload;
+  }
+  getLocalFilePath(file) {
+    const adapter = this.app.vault.adapter;
+    if (typeof adapter.getFullPath === "function") {
+      try {
+        return adapter.getFullPath(file.path);
+      } catch {
+      }
+    }
+    if (typeof adapter.basePath === "string" && adapter.basePath) {
+      return `${adapter.basePath}/${file.path}`;
+    }
+    return "";
+  }
   onSummaryChange(fn) {
     this.summaryListeners.add(fn);
+    return () => this.summaryListeners.delete(fn);
   }
   emitSummary() {
     for (const l of this.summaryListeners)
@@ -7300,7 +7893,8 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
     });
     this.currentConversation.model = prof.model;
     this.currentConversation.provider = this.settings.providerId;
-    const tools = [];
+    const tools = this.buildVaultTools();
+    const fileAttachments = this.pendingFileAttachments.slice();
     this.lastTurnSummary = { created: [], edited: [], deleted: [] };
     const promptKey = systemPromptKey(this.currentConversation.mode);
     const basePrompt = promptKey ? this.i18n.t(promptKey) : "";
@@ -7309,9 +7903,20 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
 
 ## About the user
   ${profileText}` : basePrompt : "";
+    let userText = text2;
+    let attachmentContext = "";
+    let providerAttachments = [];
+    if (fileAttachments.length) {
+      const attachmentPayload = await this.buildFileAttachmentContext(fileAttachments);
+      attachmentContext = attachmentPayload.text;
+      providerAttachments = attachmentPayload.attachments;
+      userText = this.formatUserMessageWithAttachments(text2, fileAttachments);
+      this.clearPendingFileAttachments();
+    }
+    const combinedSystemPrompt = [systemPrompt, attachmentContext].filter(Boolean).join("\n\n");
     const ctxMgr = new ContextManager({
       conversation: this.currentConversation,
-      systemPrompt,
+      systemPrompt: combinedSystemPrompt,
       provider,
       model: prof.model,
       providerId: this.settings.providerId,
@@ -7344,11 +7949,12 @@ var HermesObsidianAgentPlugin = class extends import_obsidian9.Plugin {
       maxIterations: this.settings.maxIterations,
       turnTimeoutMs: this.settings.turnTimeoutMs,
       computeDiff: (p) => this.computeDiff(p),
-      autoApprove: this.settings.autoApprove ? (p) => this.autoApproveAndBackup(p) : void 0
+      autoApprove: this.settings.autoApprove ? (p) => this.autoApproveAndBackup(p) : void 0,
+      attachments: providerAttachments
     });
     this.statusBar.render("thinking");
     try {
-      yield* this.currentLoop.send(text2);
+      yield* this.currentLoop.send(userText);
     } finally {
       this.statusBar.render("idle");
       this.setCompacting(false);
@@ -7439,7 +8045,7 @@ ${String(p.args.content)}`;
       timeoutMs: this.settings.turnTimeoutMs
     });
     const conv = new Conversation({ id: `sched_${kind}_${Date.now()}`, mode: "scheduled", provider: this.settings.providerId, model: prof.model });
-    const tools = [];
+    const tools = this.buildVaultTools();
     const promptKey = kind === "daily" ? "prompt.scheduled.daily" : "prompt.scheduled.weekly";
     const systemPrompt = this.i18n.t(promptKey);
     conv.append({ role: "user", content: `Target folder: ${cfg.targetFolder}` });
@@ -7487,18 +8093,24 @@ ${String(p.args.content)}`;
   async activateView() {
     let leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_AGENT_CHAT)[0];
     if (!leaf) {
-      leaf = this.app.workspace.getRightLeaf(false);
+      leaf = this.app.workspace.getRightLeaf(false) ?? this.app.workspace.getLeaf(true);
+      if (!leaf)
+        return;
       await leaf.setViewState({ type: VIEW_TYPE_AGENT_CHAT, active: true });
     }
-    void this.app.workspace.revealLeaf(leaf);
+    await this.app.workspace.revealLeaf(leaf);
   }
   /** Detach + reopen the chat view so Svelte components re-render with the current locale. */
   async reopenChatView() {
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_AGENT_CHAT);
     if (!leaves.length)
       return;
-    for (const leaf of leaves)
-      leaf.detach();
+    if (typeof this.app.workspace.detachLeavesOfType === "function") {
+      await this.app.workspace.detachLeavesOfType(VIEW_TYPE_AGENT_CHAT);
+    } else {
+      for (const leaf of leaves)
+        leaf.detach();
+    }
     await this.activateView();
   }
   async testHermesApiConnection() {

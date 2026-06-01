@@ -1029,3 +1029,73 @@
 .ac-char-warn.svelte-1nhvqhf.svelte-1nhvqhf {
   color: var(--color-orange, #ed8936);
 }
+
+.ac-attachments {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 0;
+}
+
+.ac-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 4px 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 28%, var(--background-modifier-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--interactive-accent) 9%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.ac-attachment-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.ac-attachment-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+}
+
+.ac-attachment-remove:hover,
+.ac-attachment-remove:focus-visible {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.ac-attach-btn {
+  color: var(--text-muted);
+}
+
+.hermes-file-suggest-name {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.hermes-file-suggest-path {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
